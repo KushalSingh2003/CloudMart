@@ -1,0 +1,215 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >
+  CloudMart Data Stack. Creates the RDS MySQL database using the private subnets and RDS security group created by the Network Stack.
+
+# ============================================================================
+# PARAMETERS
+# ============================================================================
+
+Parameters:
+
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+    - dev
+    - prod
+    Description: Deployment environment.
+
+  DBInstanceClass:
+    Type: String
+    Default: db.t3.micro
+    Description: RDS MySQL instance class.
+
+  AllocatedStorage:
+    Type: Number
+    Default: 20
+    MinValue: 20
+    Description: RDS allocated storage in GB.
+
+  DatabaseName:
+    Type: String
+    Default: cloudmart
+    Description: Initial database name.
+
+  MasterUsername:
+    Type: String
+    Default: admin
+    Description: RDS master username.
+
+  MasterUserPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    Description: RDS master user password.
+
+  MultiAZ:
+    Type: String
+    Default: "false"
+    AllowedValues:
+    - "true"
+    - "false"
+    Description: Whether RDS should deploy a standby instance in another AZ.
+
+  BackupRetentionPeriod:
+    Type: Number
+    Default: 7
+    MinValue: 0
+    Description: Number of days to retain automated backups.
+
+# ============================================================================
+# RESOURCES
+# ============================================================================
+
+Resources:
+
+  # ==========================================================================
+  # RDS DB SUBNET GROUP
+  # ==========================================================================
+  #
+  # Uses the two private subnets created by the Network Stack.
+  #
+  # PrivateSubnetA → ap-south-1a
+  # PrivateSubnetB → ap-south-1b
+  #
+  # RDS can therefore use these two AZs for database placement/failover.
+  #
+
+  CloudMartDBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: >
+        Private subnet group for CloudMart RDS MySQL.
+
+      SubnetIds:
+      - Fn::ImportValue:
+          Fn::Sub: cloudmart-${Environment}-PrivateSubnetAId
+
+      - Fn::ImportValue:
+          Fn::Sub: cloudmart-${Environment}-PrivateSubnetBId
+
+      Tags:
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-db-subnet-group
+
+      - Key: Project
+        Value: CloudMart
+
+      - Key: Environment
+        Value: !Ref Environment
+
+  # ==========================================================================
+  # RDS MYSQL DATABASE
+  # ==========================================================================
+
+  CloudMartDatabase:
+    Type: AWS::RDS::DBInstance
+
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+
+    Properties:
+
+      # -----------------------------------------------------------------------
+      # Database engine
+      # -----------------------------------------------------------------------
+
+      Engine: mysql
+      EngineVersion: "8.0"
+
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: !Ref AllocatedStorage
+      StorageType: gp3
+      StorageEncrypted: true
+
+      # -----------------------------------------------------------------------
+      # Database configuration
+      # -----------------------------------------------------------------------
+
+      DBName: !Ref DatabaseName
+
+      MasterUsername: !Ref MasterUsername
+      MasterUserPassword: !Ref MasterUserPassword
+
+      Port: 3306
+
+      # -----------------------------------------------------------------------
+      # Network configuration
+      # -----------------------------------------------------------------------
+
+      DBSubnetGroupName: !Ref CloudMartDBSubnetGroup
+
+      VPCSecurityGroups:
+      - Fn::ImportValue:
+          Fn::Sub: cloudmart-${Environment}-RDSSecurityGroupId
+
+      PubliclyAccessible: false
+
+      # -----------------------------------------------------------------------
+      # Availability
+      # -----------------------------------------------------------------------
+
+      MultiAZ: !Ref MultiAZ
+
+      # -----------------------------------------------------------------------
+      # Backup
+      # -----------------------------------------------------------------------
+
+      BackupRetentionPeriod: !Ref BackupRetentionPeriod
+
+      CopyTagsToSnapshot: true
+
+      # -----------------------------------------------------------------------
+      # Monitoring / maintenance
+      # -----------------------------------------------------------------------
+
+      AutoMinorVersionUpgrade: true
+
+      # -----------------------------------------------------------------------
+      # Tags
+      # -----------------------------------------------------------------------
+
+      Tags:
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-mysql
+
+      - Key: Project
+        Value: CloudMart
+
+      - Key: Environment
+        Value: !Ref Environment
+
+# ============================================================================
+# OUTPUTS
+# ============================================================================
+
+Outputs:
+
+  DBInstanceIdentifier:
+    Description: CloudMart RDS instance identifier.
+    Value: !Ref CloudMartDatabase
+
+  DBEndpoint:
+    Description: CloudMart RDS MySQL endpoint.
+    Value: !GetAtt CloudMartDatabase.Endpoint.Address
+
+  DBPort:
+    Description: CloudMart RDS MySQL port.
+    Value: !GetAtt CloudMartDatabase.Endpoint.Port
+
+  DatabaseName:
+    Description: CloudMart database name.
+    Value: !Ref DatabaseName
+
+  DBSubnetGroupName:
+    Description: CloudMart RDS DB subnet group.
+    Value: !Ref CloudMartDBSubnetGroup
+
+  RDSSecurityGroupId:
+    Description: Security group attached to the RDS instance.
+    Value:
+      Fn::ImportValue:
+        Fn::Sub: cloudmart-${Environment}-RDSSecurityGroupId
+
+
