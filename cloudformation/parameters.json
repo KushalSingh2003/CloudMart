@@ -10,8 +10,8 @@
   {
     "ParameterKey": "LambdaMemorySize",
     "ParameterValue": "1024"
-  }
-  [
+  },
+  
   {
     "ParameterKey": "AvailabilityZone",
     "ParameterValue": "ap-south-1"
@@ -21,4 +21,4 @@
     "ParameterValue": "0.0.0.0/0"
   }
 ]
-]
+
