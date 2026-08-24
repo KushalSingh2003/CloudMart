@@ -1,336 +1,49 @@
-name: Deploy CloudFormation Infrastructure
+name: Deploy CloudMart Infrastructure
 
 on:
   push:
     branches:
-    - main
+      - main
     paths:
-    - 'cloudformation/**'
-    - '.github/workflows/deploy.yaml'
+      - 'cloudformation/**'
+      - '.github/workflows/**'
+
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Target environment'
+        description: Target environment
         required: true
-        default: 'dev'
+        default: dev
         type: choice
         options:
-        - dev
-        - staging
-        - prod
+          - dev
+          - prod
 
 permissions:
-  id-token: write # required for OIDC token generation
+  id-token: write
   contents: read
 
-env:
-  AWS_REGION: ${{ vars.AWS_REGION }}
-  CFN_BUCKET: ${{ vars.CFN_BUCKET }}
-  AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
-  STACK_NAME: network-stack-CloudMart
-  TEMPLATE_FILE: cloudformation/network-stack.yaml
-  PARAMETERS_FILE: cloudformation/parameters.json
-  TAGS_FILE: cloudformation/tags.json
-  CHANGESET_NAME: changeset-${{ github.run_id }}-${{ github.run_attempt }}
-
 jobs:
-  # ─────────────────────────────────────────────
-  # JOB 1: Lint & Validate
-  # ─────────────────────────────────────────────
-  lint-and-validate:
-    name: Lint & Validate Template
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
+  network:
+    name: Deploy Network Stack
+    uses: ./.github/workflows/deploy-stack.yaml
+    with:
+      stack_name: network-stack-CloudMart
+      template_file: cloudformation/network-stack.yaml
+      parameters_file: cloudformation/config/network-parameters.json
+      tags_file: cloudformation/config/tags.json
+      environment: dev
+    secrets: inherit
 
-    - name: Install cfn-lint
-      run: pip install cfn-lint
-
-    - name: Run cfn-lint
-      run: |
-        echo "Running CloudFormation linter..."
-        cfn-lint ${{ env.TEMPLATE_FILE }} --include-checks W
-        echo "Lint passed."
-
-    - name: Configure AWS credentials via OIDC
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-        aws-region: ${{ env.AWS_REGION }}
-        role-session-name: GitHubActions-Validate-${{ github.run_id }}
-
-    - name: Validate template against AWS
-      run: |
-        echo "Validating template with AWS CloudFormation..."
-        aws cloudformation validate-template \
-          --template-body file://${{ env.TEMPLATE_FILE }}
-        echo "AWS validation passed."
-
-  # ─────────────────────────────────────────────
-  # JOB 2: Upload Template to S3
-  # ─────────────────────────────────────────────
-  upload-template:
-    name: Upload Template to S3
-    runs-on: ubuntu-latest
-    needs: lint-and-validate
-    outputs:
-      template_s3_url: ${{ steps.upload.outputs.template_s3_url }}
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Configure AWS credentials via OIDC
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-        aws-region: ${{ env.AWS_REGION }}
-        role-session-name: GitHubActions-Upload-${{ github.run_id }}
-
-    - name: Upload template to S3
-      id: upload
-      run: |
-        S3_KEY="templates/${{ env.STACK_NAME }}/run-${{ github.run_id }}/infrastructure.yaml"
-        S3_URL="https://${{ env.CFN_BUCKET }}.s3.${{ env.AWS_REGION }}.amazonaws.com/${S3_KEY}"
-
-        echo "Uploading to s3://${{ env.CFN_BUCKET }}/${S3_KEY}..."
-        aws s3 cp "${{ env.TEMPLATE_FILE }}" "s3://${{ env.CFN_BUCKET }}/${S3_KEY}"
-
-        echo "Template S3 URL: ${S3_URL}"
-        echo "template_s3_url=${S3_URL}" >> "$GITHUB_OUTPUT"
-
-  # ─────────────────────────────────────────────
-  # JOB 3: Create Change Set
-  # ─────────────────────────────────────────────
-  create-changeset:
-    name: Create Change Set
-    runs-on: ubuntu-latest
-    needs: upload-template
-    outputs:
-      changeset_status: ${{ steps.check-changeset.outputs.changeset_status }}
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Configure AWS credentials via OIDC
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-        aws-region: ${{ env.AWS_REGION }}
-        role-session-name: GitHubActions-ChangeSet-${{ github.run_id }}
-
-    - name: Check if stack exists
-      id: stack-check
-      run: |
-        if aws cloudformation describe-stacks --stack-name "${{ env.STACK_NAME }}" 2>/dev/null; then
-          echo "stack_exists=true" >> $GITHUB_OUTPUT
-          echo "Stack exists — change set type: UPDATE"
-        else
-          echo "stack_exists=false" >> $GITHUB_OUTPUT
-          echo "Stack does not exist — change set type: CREATE"
-        fi
-
-    - name: Create change set
-      run: |
-        CHANGESET_TYPE="UPDATE"
-        if [ "${{ steps.stack-check.outputs.stack_exists }}" = "false" ]; then
-          CHANGESET_TYPE="CREATE"
-        fi
-
-        TEMPLATE_URL="${{ needs.upload-template.outputs.template_s3_url }}"
-        echo "Template URL: ${TEMPLATE_URL}"
-
-        if [ -z "${TEMPLATE_URL}" ]; then
-          echo "ERROR: template_s3_url output is empty. Check the upload-template job."
-          exit 1
-        fi
-
-        echo "Creating change set '${{ env.CHANGESET_NAME }}' (type: ${CHANGESET_TYPE})..."
-        aws cloudformation create-change-set \
-          --stack-name "${{ env.STACK_NAME }}" \
-          --change-set-name "${{ env.CHANGESET_NAME }}" \
-          --change-set-type "${CHANGESET_TYPE}" \
-          --template-url "${TEMPLATE_URL}" \
-          --parameters "file://${{ env.PARAMETERS_FILE }}" \
-          --tags "file://${{ env.TAGS_FILE }}" \
-          --capabilities CAPABILITY_NAMED_IAM
-
-        echo "Polling change set status (max 20 attempts, 15s apart)..."
-        for i in $(seq 1 20); do
-          STATUS=$(aws cloudformation describe-change-set \
-            --stack-name "${{ env.STACK_NAME }}" \
-            --change-set-name "${{ env.CHANGESET_NAME }}" \
-            --query 'Status' --output text)
-
-          echo "Attempt ${i}/20 — Status: ${STATUS}"
-
-          if [ "${STATUS}" = "CREATE_COMPLETE" ]; then
-            echo "Change set is ready."
-            break
-          elif [ "${STATUS}" = "FAILED" ]; then
-            echo "Change set moved to FAILED — will be handled in next step."
-            break
-          elif [ "${STATUS}" = "REVIEW_IN_PROGRESS" ] || [ "${STATUS}" = "CREATE_IN_PROGRESS" ]; then
-            echo "Still pending, waiting 15s..."
-            sleep 15
-          else
-            echo "Unexpected status: ${STATUS}"
-            sleep 15
-          fi
-
-          if [ "${i}" = "20" ]; then
-            echo "ERROR: Change set did not reach a terminal state after 5 minutes."
-            exit 1
-          fi
-        done
-
-    - name: Check change set status
-      id: check-changeset
-      run: |
-        STATUS=$(aws cloudformation describe-change-set \
-          --stack-name "${{ env.STACK_NAME }}" \
-          --change-set-name "${{ env.CHANGESET_NAME }}" \
-          --query 'Status' --output text)
-
-        REASON=$(aws cloudformation describe-change-set \
-          --stack-name "${{ env.STACK_NAME }}" \
-          --change-set-name "${{ env.CHANGESET_NAME }}" \
-          --query 'StatusReason' --output text)
-
-        echo "Change set status: ${STATUS}"
-        echo "Reason: ${REASON}"
-        echo "changeset_status=${STATUS}" >> $GITHUB_OUTPUT
-
-        if [ "${STATUS}" = "FAILED" ]; then
-          if echo "${REASON}" | grep -q "didn't contain changes"; then
-            echo "No changes detected — skipping deployment."
-          else
-            echo "Change set creation failed: ${REASON}"
-            exit 1
-          fi
-        fi
-
-    - name: Print change set details
-      run: |
-        echo "===== Change Set Summary ====="
-        aws cloudformation describe-change-set \
-          --stack-name "${{ env.STACK_NAME }}" \
-          --change-set-name "${{ env.CHANGESET_NAME }}" \
-          --query 'Changes[*].{Action:ResourceChange.Action,Resource:ResourceChange.LogicalResourceId,Type:ResourceChange.ResourceType,Replacement:ResourceChange.Replacement}' \
-          --output table || echo "No changes to display."
-
-  # ─────────────────────────────────────────────
-  # JOB 4: Execute Change Set
-  # ─────────────────────────────────────────────
-  deploy:
-    name: Execute Change Set
-    runs-on: ubuntu-latest
-    needs: create-changeset
-    if: needs.create-changeset.outputs.changeset_status != 'FAILED'
-    steps:
-    - name: Configure AWS credentials via OIDC
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-        aws-region: ${{ env.AWS_REGION }}
-        role-session-name: GitHubActions-Deploy-${{ github.run_id }}
-
-    - name: Execute change set
-      run: |
-        echo "Executing change set '${{ env.CHANGESET_NAME }}'..."
-        aws cloudformation execute-change-set \
-          --stack-name "${{ env.STACK_NAME }}" \
-          --change-set-name "${{ env.CHANGESET_NAME }}"
-
-    - name: Wait for stack to stabilize
-      run: |
-        echo "Polling stack status (max 40 attempts, 30s apart = 20 min max)..."
-        for i in $(seq 1 40); do
-          STATUS=$(aws cloudformation describe-stacks \
-            --stack-name "${{ env.STACK_NAME }}" \
-            --query 'Stacks[0].StackStatus' --output text)
-
-          echo "Attempt ${i}/40 — Stack status: ${STATUS}"
-
-          case "${STATUS}" in
-            CREATE_COMPLETE|UPDATE_COMPLETE)
-              echo "Stack deployment succeeded."
-              exit 0
-              ;;
-            CREATE_IN_PROGRESS|UPDATE_IN_PROGRESS|UPDATE_COMPLETE_CLEANUP_IN_PROGRESS)
-              echo "Still in progress, waiting 30s..."
-              sleep 30
-              ;;
-            CREATE_FAILED|UPDATE_FAILED|ROLLBACK_COMPLETE|ROLLBACK_IN_PROGRESS|UPDATE_ROLLBACK_COMPLETE|UPDATE_ROLLBACK_IN_PROGRESS|UPDATE_ROLLBACK_FAILED)
-              echo "ERROR: Stack deployment failed with status: ${STATUS}"
-              echo "--- Recent stack events ---"
-              aws cloudformation describe-stack-events \
-                --stack-name "${{ env.STACK_NAME }}" \
-                --query 'StackEvents[:10].{Time:Timestamp,Status:ResourceStatus,Resource:LogicalResourceId,Reason:ResourceStatusReason}' \
-                --output table
-              exit 1
-              ;;
-            *)
-              echo "Unexpected status: ${STATUS}, waiting 30s..."
-              sleep 30
-              ;;
-          esac
-
-          if [ "${i}" = "40" ]; then
-            echo "ERROR: Stack did not stabilize within 20 minutes."
-            exit 1
-          fi
-        done
-
-  # ─────────────────────────────────────────────
-  # JOB 5: Post-Deployment Verification
-  # ─────────────────────────────────────────────
-  post-deploy:
-    name: Post-Deployment Verification
-    runs-on: ubuntu-latest
-    needs: deploy
-    steps:
-    - name: Configure AWS credentials via OIDC
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-        aws-region: ${{ env.AWS_REGION }}
-        role-session-name: GitHubActions-PostDeploy-${{ github.run_id }}
-
-    - name: Verify stack is in a healthy state
-      run: |
-        STATUS=$(aws cloudformation describe-stacks \
-          --stack-name "${{ env.STACK_NAME }}" \
-          --query 'Stacks[0].StackStatus' --output text)
-
-        echo "Stack status: ${STATUS}"
-        if [[ "${STATUS}" != *"COMPLETE"* ]]; then
-          echo "Stack is not healthy: ${STATUS}"
-          exit 1
-        fi
-
-    - name: Print stack outputs
-      run: |
-        echo "===== Stack Outputs ====="
-        aws cloudformation describe-stacks \
-          --stack-name "${{ env.STACK_NAME }}" \
-          --query 'Stacks[0].Outputs[*].{Key:OutputKey,Value:OutputValue,Description:Description}' \
-          --output table
-
-
-
-    - name: Summary
-      run: |
-        echo "============================================"
-        echo "  Deployment completed successfully!"
-        echo "  Deployment completed successfully! Done by Kushal Singh"
-        echo "  Stack:  ${{ env.STACK_NAME }}"
-        echo "  Region: ${{ env.AWS_REGION }}"
-        echo "  Run ID: ${{ github.run_id }}"
-        echo "  Commit: ${{ github.sha }}"
-        echo "============================================"
+  data:
+    name: Deploy Data Stack
+    needs: network
+    uses: ./.github/workflows/deploy-stack.yaml
+    with:
+      stack_name: data-stack-CloudMart
+      template_file: cloudformation/data-stack.yaml
+      parameters_file: cloudformation/config/data-parameters.json
+      tags_file: cloudformation/config/tags.json
+      environment: dev
+    secrets: inherit
