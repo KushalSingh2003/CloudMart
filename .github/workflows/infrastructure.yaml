@@ -328,6 +328,7 @@ jobs:
       run: |
         echo "============================================"
         echo "  Deployment completed successfully!"
+        echo "  Deployment completed successfully! Done by Kushal Singh"
         echo "  Stack:  ${{ env.STACK_NAME }}"
         echo "  Region: ${{ env.AWS_REGION }}"
         echo "  Run ID: ${{ github.run_id }}"
