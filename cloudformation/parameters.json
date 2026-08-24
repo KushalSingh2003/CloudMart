@@ -5,11 +5,11 @@
   },
   {
     "ParameterKey": "ProjectName",
-    "ParameterValue": "cfn-demo"
+    "ParameterValue": "CloudMart"
   },
   {
     "ParameterKey": "LambdaMemorySize",
-    "ParameterValue": "1024"
+    "ParameterValue": "128"
   },
   
   {
