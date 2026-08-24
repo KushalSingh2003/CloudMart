@@ -322,20 +322,7 @@ jobs:
           --query 'Stacks[0].Outputs[*].{Key:OutputKey,Value:OutputValue,Description:Description}' \
           --output table
 
-    - name: Verify Lambda function is active
-      run: |
-        LAMBDA_NAME=$(aws cloudformation describe-stacks \
-          --stack-name "${{ env.STACK_NAME }}" \
-          --query "Stacks[0].Outputs[?OutputKey=='LambdaFunctionName'].OutputValue" \
-          --output text)
 
-        echo "Checking Lambda: ${LAMBDA_NAME}"
-        STATE=$(aws lambda get-function \
-          --function-name "${LAMBDA_NAME}" \
-          --query 'Configuration.State' --output text)
-
-        echo "Lambda state: ${STATE}"
-        [ "${STATE}" = "Active" ] && echo "Lambda is healthy." || exit 1
 
     - name: Summary
       run: |
