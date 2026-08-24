@@ -8,6 +8,59 @@ echo "=========================================="
 echo "Stack: ${STACK_NAME}"
 echo "Change Set: ${CHANGESET_NAME}"
 
+echo "Checking Change Set status..."
+
+for i in $(seq 1 20); do
+
+  STATUS=$(aws cloudformation describe-change-set \
+    --stack-name "${STACK_NAME}" \
+    --change-set-name "${CHANGESET_NAME}" \
+    --query 'Status' \
+    --output text)
+
+  REASON=$(aws cloudformation describe-change-set \
+    --stack-name "${STACK_NAME}" \
+    --change-set-name "${CHANGESET_NAME}" \
+    --query 'StatusReason' \
+    --output text)
+
+  echo "Attempt ${i}/20 — Change Set Status: ${STATUS}"
+
+  case "${STATUS}" in
+
+    CREATE_COMPLETE)
+      echo "Change Set is ready for execution."
+      break
+      ;;
+
+    CREATE_IN_PROGRESS)
+      echo "Change Set is still being created. Waiting 15 seconds..."
+      sleep 15
+      ;;
+
+    FAILED)
+      echo "Change Set creation failed."
+      echo "Reason: ${REASON}"
+      exit 1
+      ;;
+
+    *)
+      echo "Unexpected Change Set status: ${STATUS}"
+      echo "Reason: ${REASON}"
+      exit 1
+      ;;
+
+  esac
+
+  if [ "${i}" = "20" ]; then
+    echo "ERROR: Change Set did not become ready after 5 minutes."
+    exit 1
+  fi
+
+done
+
+echo "Executing Change Set..."
+
 aws cloudformation execute-change-set \
   --stack-name "${STACK_NAME}" \
   --change-set-name "${CHANGESET_NAME}"
@@ -23,7 +76,7 @@ for i in $(seq 1 40); do
     --query 'Stacks[0].StackStatus' \
     --output text)
 
-  echo "Attempt ${i}/40 — Status: ${STATUS}"
+  echo "Attempt ${i}/40 — Stack Status: ${STATUS}"
 
   case "${STATUS}" in
 
@@ -48,7 +101,7 @@ for i in $(seq 1 40); do
       ;;
 
     *)
-      echo "Unexpected status: ${STATUS}"
+      echo "Unexpected stack status: ${STATUS}"
       sleep 30
       ;;
 
