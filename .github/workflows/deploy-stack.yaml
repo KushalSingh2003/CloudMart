@@ -24,8 +24,6 @@ on:
         required: true
         type: string
 
-    secrets: inherit
-
 permissions:
   id-token: write
   contents: read
@@ -70,6 +68,7 @@ jobs:
           .github/scripts/upload-template.sh
 
       - name: Create Change Set
+        id: create-changeset
         env:
           STACK_NAME: ${{ inputs.stack_name }}
           PARAMETERS_FILE: ${{ inputs.parameters_file }}
