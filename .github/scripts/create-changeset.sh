@@ -1,30 +1,16 @@
 #!/bin/bash
 set -e
 
-echo "=========================================="
-echo "Creating CloudFormation Change Set"
-echo "=========================================="
-
 CHANGESET_NAME="changeset-${STACK_NAME}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
-echo "Stack: ${STACK_NAME}"
-echo "Change Set: ${CHANGESET_NAME}"
-
 if aws cloudformation describe-stacks \
-    --stack-name "${STACK_NAME}" \
-    >/dev/null 2>&1; then
-
-  CHANGESET_TYPE="UPDATE"
-  echo "Existing stack detected."
-  echo "Change Set type: UPDATE"
-
+    --stack-name "${STACK_NAME}" >/dev/null 2>&1; then
+    CHANGESET_TYPE="UPDATE"
 else
-
-  CHANGESET_TYPE="CREATE"
-  echo "Stack does not exist."
-  echo "Change Set type: CREATE"
-
+    CHANGESET_TYPE="CREATE"
 fi
+
+echo "Creating ${CHANGESET_TYPE} change set..."
 
 aws cloudformation create-change-set \
   --stack-name "${STACK_NAME}" \
@@ -35,6 +21,37 @@ aws cloudformation create-change-set \
   --tags "file://${TAGS_FILE}" \
   --capabilities CAPABILITY_NAMED_IAM
 
-echo "Change Set created."
+echo "Waiting for Change Set to become ready..."
+
+for i in $(seq 1 20); do
+
+  STATUS=$(aws cloudformation describe-change-set \
+    --stack-name "${STACK_NAME}" \
+    --change-set-name "${CHANGESET_NAME}" \
+    --query 'Status' \
+    --output text)
+
+  REASON=$(aws cloudformation describe-change-set \
+    --stack-name "${STACK_NAME}" \
+    --change-set-name "${CHANGESET_NAME}" \
+    --query 'StatusReason' \
+    --output text)
+
+  echo "Attempt ${i}/20 — Status: ${STATUS}"
+
+  if [ "${STATUS}" = "CREATE_COMPLETE" ]; then
+    echo "Change Set is ready."
+    break
+  fi
+
+  if [ "${STATUS}" = "FAILED" ]; then
+    echo "Change Set creation failed."
+    echo "Reason: ${REASON}"
+    exit 1
+  fi
+
+  sleep 15
+
+done
 
 echo "changeset_name=${CHANGESET_NAME}" >> "${GITHUB_OUTPUT}"
