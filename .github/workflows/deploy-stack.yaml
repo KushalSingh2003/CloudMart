@@ -1,0 +1,95 @@
+name: Reusable CloudFormation Deployment
+
+on:
+  workflow_call:
+    inputs:
+
+      stack_name:
+        required: true
+        type: string
+
+      template_file:
+        required: true
+        type: string
+
+      parameters_file:
+        required: true
+        type: string
+
+      tags_file:
+        required: true
+        type: string
+
+      environment:
+        required: true
+        type: string
+
+    secrets: inherit
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  CFN_BUCKET: ${{ vars.CFN_BUCKET }}
+  AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+
+jobs:
+
+  deploy:
+    name: Deploy ${{ inputs.stack_name }}
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-${{ inputs.stack_name }}-${{ github.run_id }}
+
+      - name: Validate CloudFormation template
+        env:
+          TEMPLATE_FILE: ${{ inputs.template_file }}
+        run: |
+          chmod +x .github/scripts/validate-stack.sh
+          .github/scripts/validate-stack.sh
+
+      - name: Upload template to S3
+        id: upload
+        env:
+          TEMPLATE_FILE: ${{ inputs.template_file }}
+          STACK_NAME: ${{ inputs.stack_name }}
+        run: |
+          chmod +x .github/scripts/upload-template.sh
+          .github/scripts/upload-template.sh
+
+      - name: Create Change Set
+        env:
+          STACK_NAME: ${{ inputs.stack_name }}
+          PARAMETERS_FILE: ${{ inputs.parameters_file }}
+          TAGS_FILE: ${{ inputs.tags_file }}
+          TEMPLATE_S3_URL: ${{ steps.upload.outputs.template_s3_url }}
+        run: |
+          chmod +x .github/scripts/create-changeset.sh
+          .github/scripts/create-changeset.sh
+
+      - name: Execute Change Set
+        env:
+          STACK_NAME: ${{ inputs.stack_name }}
+          CHANGESET_NAME: ${{ steps.create-changeset.outputs.changeset_name }}
+        run: |
+          chmod +x .github/scripts/execute-changeset.sh
+          .github/scripts/execute-changeset.sh
+
+      - name: Verify Stack
+        env:
+          STACK_NAME: ${{ inputs.stack_name }}
+        run: |
+          chmod +x .github/scripts/verify-stack.sh
+          .github/scripts/verify-stack.sh
