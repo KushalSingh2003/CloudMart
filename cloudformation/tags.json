@@ -1,0 +1,19 @@
+
+[
+  {
+    "Key": "Environment",
+    "Value": "dev"
+  },
+  {
+    "Key": "Project",
+    "Value": "cfn-demo"
+  },
+  {
+    "Key": "ManagedBy",
+    "Value": "GitHubActions"
+  },
+  {
+    "Key": "Owner",
+    "Value": "platform-team"
+  }
+]
