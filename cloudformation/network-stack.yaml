@@ -1,1 +1,362 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  CloudMart Network Stack. Creates the VPC, public/private subnets, internet gateway, route tables, security groups, and VPC endpoints required by the CloudMart architecture.
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+    - dev
+    - prod
+    Description: Deployment environment.
+
+  VpcCidr:
+    Type: String
+    Default: 16.0.0.0/16
+    Description: CIDR for the CloudMart VPC.
+
+  PublicSubnetCidr:
+    Type: String
+    Default: 16.0.1.0/24
+    Description: CIDR for the public subnet.
+
+  PrivateSubnetCidr:
+    Type: String
+    Default: 16.0.2.0/24
+    Description: CIDR for the private subnet.
+
+  AvailabilityZone:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Description: Single Availability Zone used by the CloudMart network stack.
+
+  AllowedSSHCidr:
+    Type: String
+    Description: >
+      Authorized public IP in CIDR notation for SSH access to EC2. Example: 203.0.113.10/32
+
+  ApplicationPort:
+    Type: Number
+    Default: 80
+    Description: TCP port exposed by the Flask application on EC2.
+
+Resources:
+
+  # --------------------------------------------------------------------------
+  # VPC
+  # --------------------------------------------------------------------------
+  CloudMartVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-vpc
+      - Key: Project
+        Value: CloudMart
+      - Key: Environment
+        Value: !Ref Environment
+
+  # --------------------------------------------------------------------------
+  # Internet Gateway
+  # --------------------------------------------------------------------------
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-igw
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref CloudMartVPC
+      InternetGatewayId: !Ref InternetGateway
+
+  # --------------------------------------------------------------------------
+  # Subnets
+  # --------------------------------------------------------------------------
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref CloudMartVPC
+      CidrBlock: !Ref PublicSubnetCidr
+      AvailabilityZone: !Ref AvailabilityZone
+      MapPublicIpOnLaunch: true
+      Tags:
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-public-subnet
+      - Key: Tier
+        Value: Public
+
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref CloudMartVPC
+      CidrBlock: !Ref PrivateSubnetCidr
+      AvailabilityZone: !Ref AvailabilityZone
+      MapPublicIpOnLaunch: false
+      Tags:
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-private-subnet
+      - Key: Tier
+        Value: Private
+
+  # --------------------------------------------------------------------------
+  # Public Route Table
+  # --------------------------------------------------------------------------
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref CloudMartVPC
+      Tags:
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-public-rt
+
+  PublicDefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet
+
+  # --------------------------------------------------------------------------
+  # Private Route Table
+  # --------------------------------------------------------------------------
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref CloudMartVPC
+      Tags:
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-private-rt
+
+  PrivateSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet
+
+  # --------------------------------------------------------------------------
+  # Security Groups
+  # --------------------------------------------------------------------------
+
+  # Used by Product, Order, Check Stock and Report Lambda functions.
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for CloudMart Lambda functions.
+      VpcId: !Ref CloudMartVPC
+      SecurityGroupEgress:
+      - Description: HTTPS access to AWS services through VPC endpoints.
+        IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        CidrIp: 0.0.0.0/0
+      - Description: MySQL access to RDS.
+        IpProtocol: tcp
+        FromPort: 3306
+        ToPort: 3306
+        CidrIp: 0.0.0.0/0
+      Tags:
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-lambda-sg
+
+  # RDS only accepts MySQL connections from Lambda-SG.
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for CloudMart RDS MySQL.
+      VpcId: !Ref CloudMartVPC
+      SecurityGroupIngress:
+      - Description: MySQL from CloudMart Lambda functions only.
+        IpProtocol: tcp
+        FromPort: 3306
+        ToPort: 3306
+        SourceSecurityGroupId: !Ref LambdaSecurityGroup
+      SecurityGroupEgress:
+      - Description: RDS outbound traffic.
+        IpProtocol: -1
+        CidrIp: 0.0.0.0/0
+      Tags:
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-rds-sg
+
+  # EC2 is public for the Flask application.
+  # SSH remains restricted to the authorized IP.
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for the public CloudMart Flask EC2 instance.
+      VpcId: !Ref CloudMartVPC
+      SecurityGroupIngress:
+      - Description: Flask application access from the Internet.
+        IpProtocol: tcp
+        FromPort: !Ref ApplicationPort
+        ToPort: !Ref ApplicationPort
+        CidrIp: 0.0.0.0/0
+      - Description: SSH administration from the authorized IP only.
+        IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: !Ref AllowedSSHCidr
+      SecurityGroupEgress:
+      - Description: Required outbound traffic.
+        IpProtocol: -1
+        CidrIp: 0.0.0.0/0
+      Tags:
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-ec2-sg
+
+  # --------------------------------------------------------------------------
+  # VPC Interface Endpoints
+  # Private Lambda functions use these endpoints instead of requiring
+  # direct Internet access for supported AWS services.
+  # --------------------------------------------------------------------------
+
+  VPCEndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for CloudMart VPC interface endpoints.
+      VpcId: !Ref CloudMartVPC
+      SecurityGroupIngress:
+      - Description: HTTPS from CloudMart Lambda functions.
+        IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        SourceSecurityGroupId: !Ref LambdaSecurityGroup
+      SecurityGroupEgress:
+      - Description: Endpoint outbound traffic.
+        IpProtocol: -1
+        CidrIp: 0.0.0.0/0
+      Tags:
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-vpce-sg
+
+  SSMVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref CloudMartVPC
+      VpcEndpointType: Interface
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ssm
+      PrivateDnsEnabled: true
+      SubnetIds:
+      - !Ref PrivateSubnet
+      SecurityGroupIds:
+      - !Ref VPCEndpointSecurityGroup
+      Tags:
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-ssm-endpoint
+
+  CloudWatchLogsVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref CloudMartVPC
+      VpcEndpointType: Interface
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.logs
+      PrivateDnsEnabled: true
+      SubnetIds:
+      - !Ref PrivateSubnet
+      SecurityGroupIds:
+      - !Ref VPCEndpointSecurityGroup
+      Tags:
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-logs-endpoint
+
+  EventBridgeVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref CloudMartVPC
+      VpcEndpointType: Interface
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.events
+      PrivateDnsEnabled: true
+      SubnetIds:
+      - !Ref PrivateSubnet
+      SecurityGroupIds:
+      - !Ref VPCEndpointSecurityGroup
+      Tags:
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-events-endpoint
+
+
+
+
+  # S3 uses a Gateway endpoint, so private resources can access S3
+  # without a NAT Gateway.
+  S3VPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref CloudMartVPC
+      VpcEndpointType: Gateway
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.s3
+      RouteTableIds:
+      - !Ref PrivateRouteTable
+      Tags:
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-s3-endpoint
+
+Outputs:
+
+  VpcId:
+    Description: CloudMart VPC ID.
+    Value: !Ref CloudMartVPC
+    Export:
+      Name: !Sub cloudmart-${Environment}-VpcId
+
+  PublicSubnetId:
+    Description: CloudMart public subnet ID.
+    Value: !Ref PublicSubnet
+    Export:
+      Name: !Sub cloudmart-${Environment}-PublicSubnetId
+
+  PrivateSubnetId:
+    Description: CloudMart private subnet ID.
+    Value: !Ref PrivateSubnet
+    Export:
+      Name: !Sub cloudmart-${Environment}-PrivateSubnetId
+
+  PublicRouteTableId:
+    Description: CloudMart public route table ID.
+    Value: !Ref PublicRouteTable
+    Export:
+      Name: !Sub cloudmart-${Environment}-PublicRouteTableId
+
+  PrivateRouteTableId:
+    Description: CloudMart private route table ID.
+    Value: !Ref PrivateRouteTable
+    Export:
+      Name: !Sub cloudmart-${Environment}-PrivateRouteTableId
+
+  LambdaSecurityGroupId:
+    Description: Security group used by CloudMart Lambda functions.
+    Value: !Ref LambdaSecurityGroup
+    Export:
+      Name: !Sub cloudmart-${Environment}-LambdaSecurityGroupId
+
+  RDSSecurityGroupId:
+    Description: Security group used by CloudMart RDS MySQL.
+    Value: !Ref RDSSecurityGroup
+    Export:
+      Name: !Sub cloudmart-${Environment}-RDSSecurityGroupId
+
+  EC2SecurityGroupId:
+    Description: Security group used by the public Flask EC2 instance.
+    Value: !Ref EC2SecurityGroup
+    Export:
+      Name: !Sub cloudmart-${Environment}-EC2SecurityGroupId
+
+  VPCEndpointSecurityGroupId:
+    Description: Security group used by VPC interface endpoints.
+    Value: !Ref VPCEndpointSecurityGroup
+    Export:
+      Name: !Sub cloudmart-${Environment}-VPCEndpointSecurityGroupId
 
