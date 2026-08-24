@@ -3,6 +3,7 @@ set -e
 
 echo "=========================================="
 echo "Creating CloudFormation Change Set"
+echo "Creating CloudFormation Change Set for running the jobs again"
 echo "=========================================="
 
 # --------------------------------------------------
