@@ -8,57 +8,38 @@ echo "=========================================="
 echo "Stack: ${STACK_NAME}"
 echo "Change Set: ${CHANGESET_NAME}"
 
+# --------------------------------------------------
+# 1. Verify Change Set is ready
+# --------------------------------------------------
+
+echo ""
 echo "Checking Change Set status..."
 
-for i in $(seq 1 20); do
+STATUS=$(aws cloudformation describe-change-set \
+  --stack-name "${STACK_NAME}" \
+  --change-set-name "${CHANGESET_NAME}" \
+  --query 'Status' \
+  --output text)
 
-  STATUS=$(aws cloudformation describe-change-set \
-    --stack-name "${STACK_NAME}" \
-    --change-set-name "${CHANGESET_NAME}" \
-    --query 'Status' \
-    --output text)
+REASON=$(aws cloudformation describe-change-set \
+  --stack-name "${STACK_NAME}" \
+  --change-set-name "${CHANGESET_NAME}" \
+  --query 'StatusReason' \
+  --output text)
 
-  REASON=$(aws cloudformation describe-change-set \
-    --stack-name "${STACK_NAME}" \
-    --change-set-name "${CHANGESET_NAME}" \
-    --query 'StatusReason' \
-    --output text)
+echo "Change Set status: ${STATUS}"
 
-  echo "Attempt ${i}/20 — Change Set Status: ${STATUS}"
+if [ "${STATUS}" != "CREATE_COMPLETE" ]; then
+  echo "ERROR: Change Set is not ready for execution."
+  echo "Reason: ${REASON}"
+  exit 1
+fi
 
-  case "${STATUS}" in
+# --------------------------------------------------
+# 2. Execute Change Set
+# --------------------------------------------------
 
-    CREATE_COMPLETE)
-      echo "Change Set is ready for execution."
-      break
-      ;;
-
-    CREATE_IN_PROGRESS)
-      echo "Change Set is still being created. Waiting 15 seconds..."
-      sleep 15
-      ;;
-
-    FAILED)
-      echo "Change Set creation failed."
-      echo "Reason: ${REASON}"
-      exit 1
-      ;;
-
-    *)
-      echo "Unexpected Change Set status: ${STATUS}"
-      echo "Reason: ${REASON}"
-      exit 1
-      ;;
-
-  esac
-
-  if [ "${i}" = "20" ]; then
-    echo "ERROR: Change Set did not become ready after 5 minutes."
-    exit 1
-  fi
-
-done
-
+echo ""
 echo "Executing Change Set..."
 
 aws cloudformation execute-change-set \
@@ -67,7 +48,13 @@ aws cloudformation execute-change-set \
 
 echo "Change Set execution started."
 
+# --------------------------------------------------
+# 3. Wait for Stack to stabilize
+# --------------------------------------------------
+
+echo ""
 echo "Waiting for stack to stabilize..."
+echo "Maximum wait time: 20 minutes"
 
 for i in $(seq 1 40); do
 
@@ -76,21 +63,34 @@ for i in $(seq 1 40); do
     --query 'Stacks[0].StackStatus' \
     --output text)
 
-  echo "Attempt ${i}/40 — Stack Status: ${STATUS}"
+  echo ""
+  echo "Attempt ${i}/40 — Stack status: ${STATUS}"
 
   case "${STATUS}" in
 
     CREATE_COMPLETE|UPDATE_COMPLETE)
-      echo "Stack deployment successful."
+      echo ""
+      echo "=========================================="
+      echo "Stack deployment succeeded."
+      echo "=========================================="
       exit 0
       ;;
 
-    CREATE_IN_PROGRESS|UPDATE_IN_PROGRESS|UPDATE_COMPLETE_CLEANUP_IN_PROGRESS)
+    CREATE_IN_PROGRESS|UPDATE_IN_PROGRESS|UPDATE_COMPLETE_CLEANUP_IN_PROGRESS|ROLLBACK_IN_PROGRESS|UPDATE_ROLLBACK_IN_PROGRESS)
+      echo "Stack is still in progress."
+      echo "Waiting 30 seconds..."
       sleep 30
       ;;
 
-    CREATE_FAILED|UPDATE_FAILED|ROLLBACK_COMPLETE|ROLLBACK_FAILED|UPDATE_ROLLBACK_FAILED)
-      echo "Stack deployment failed."
+    CREATE_FAILED|UPDATE_FAILED|ROLLBACK_COMPLETE|ROLLBACK_FAILED|UPDATE_ROLLBACK_COMPLETE|UPDATE_ROLLBACK_FAILED)
+      echo ""
+      echo "=========================================="
+      echo "ERROR: Stack deployment failed."
+      echo "Status: ${STATUS}"
+      echo "=========================================="
+
+      echo ""
+      echo "--- Recent Stack Events ---"
 
       aws cloudformation describe-stack-events \
         --stack-name "${STACK_NAME}" \
@@ -102,6 +102,7 @@ for i in $(seq 1 40); do
 
     *)
       echo "Unexpected stack status: ${STATUS}"
+      echo "Waiting 30 seconds..."
       sleep 30
       ;;
 
@@ -109,5 +110,9 @@ for i in $(seq 1 40); do
 
 done
 
-echo "Stack did not stabilize within the expected time."
+echo ""
+echo "=========================================="
+echo "ERROR: Stack did not stabilize within 20 minutes."
+echo "=========================================="
+
 exit 1
