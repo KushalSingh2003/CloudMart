@@ -5,6 +5,8 @@ echo "=========================================="
 echo "Creating CloudFormation Change Set"
 echo "Creating CloudFormation Change Set for running the jobs again"
 echo "=========================================="
+CHANGESET_NAME="changeset-${STACK_NAME}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+echo "Change Set Name: ${CHANGESET_NAME}"
 
 # --------------------------------------------------
 # 1. Determine whether stack already exists
