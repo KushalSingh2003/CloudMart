@@ -1,0 +1,34 @@
+[
+  {
+    "ParameterKey": "Environment",
+    "ParameterValue": "dev"
+  },
+  {
+    "ParameterKey": "DBInstanceClass",
+    "ParameterValue": "db.t3.micro"
+  },
+  {
+    "ParameterKey": "AllocatedStorage",
+    "ParameterValue": "20"
+  },
+  {
+    "ParameterKey": "DatabaseName",
+    "ParameterValue": "cloudmart"
+  },
+  {
+    "ParameterKey": "MasterUsername",
+    "ParameterValue": "admin"
+  },
+  {
+    "ParameterKey": "MasterUserPassword",
+    "ParameterValue": "YOUR_PASSWORD"
+  },
+  {
+    "ParameterKey": "MultiAZ",
+    "ParameterValue": "false"
+  },
+  {
+    "ParameterKey": "BackupRetentionPeriod",
+    "ParameterValue": "7"
+  }
+]
