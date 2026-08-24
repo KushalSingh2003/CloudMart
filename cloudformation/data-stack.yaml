@@ -116,7 +116,7 @@ Resources:
       # -----------------------------------------------------------------------
 
       Engine: mysql
-      EngineVersion: "8.0"
+      EngineVersion: "8.4.9"
 
       DBInstanceClass: !Ref DBInstanceClass
       AllocatedStorage: !Ref AllocatedStorage
