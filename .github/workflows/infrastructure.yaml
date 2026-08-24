@@ -33,7 +33,7 @@ jobs:
       template_file: cloudformation/network-stack.yaml
       parameters_file: cloudformation/config/network-parameters.json
       tags_file: cloudformation/config/tags.json
-      environment: ${{ inputs.environment || 'dev' }}
+      environment: dev
     secrets: inherit
 
   data:
@@ -45,5 +45,5 @@ jobs:
       template_file: cloudformation/data-stack.yaml
       parameters_file: cloudformation/config/data-parameters.json
       tags_file: cloudformation/config/tags.json
-      environment: ${{ inputs.environment || 'dev' }}
+      environment: dev
     secrets: inherit
