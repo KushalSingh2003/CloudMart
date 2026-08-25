@@ -79,8 +79,8 @@ Resources:
   CloudMartDBSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
-      DBSubnetGroupDescription: >
-        Private subnet group for CloudMart RDS MySQL.
+      DBSubnetGroupDescription:Private subnet group for CloudMart RDS MySQL
+       
 
       SubnetIds:
       - Fn::ImportValue:
