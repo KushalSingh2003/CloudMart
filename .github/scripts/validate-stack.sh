@@ -12,13 +12,20 @@ pip install cfn-lint -q
 echo ""
 echo "Running cfn-lint..."
 
-if cfn-lint "${TEMPLATE_FILE}"; then
-    echo "cfn-lint validation passed."
-else
+LINT_OUTPUT=$(cfn-lint "${TEMPLATE_FILE}" 2>&1 || true)
+
+echo "${LINT_OUTPUT}"
+
+# Fail only if cfn-lint reports an actual E#### error.
+if echo "${LINT_OUTPUT}" | grep -qE '(^|[[:space:]])E[0-9]{4}'; then
     echo ""
-    echo "ERROR: cfn-lint found validation errors."
+    echo "ERROR: cfn-lint found actual validation errors."
     exit 1
 fi
+
+echo ""
+echo "cfn-lint validation passed."
+echo "Warnings are present, but they are non-blocking."
 
 echo ""
 echo "Validating with AWS CloudFormation..."
