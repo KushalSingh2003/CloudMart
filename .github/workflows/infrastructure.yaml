@@ -1,3 +1,29 @@
+name: Deploy CloudMart Infrastructure
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'cloudformation/**'
+      - '.github/workflows/**'
+      - 'lambda/**'
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - prod
+
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
 
   network:
@@ -17,6 +43,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -30,6 +57,7 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: GitHubActions-LambdaUpload-${{ github.run_id }}
 
       - name: Upload Lambda ZIP to S3
         run: |
