@@ -83,7 +83,7 @@ Resources:
 
     Properties:
 
-      DBSubnetGroupDescription: >
+      DBSubnetGroupDescription: 
         Private subnet group for CloudMart RDS MySQL.
 
       SubnetIds:
