@@ -28,7 +28,7 @@ permissions:
 jobs:
 
   network:
-    name: Deploy Network Stack 10th attempt
+    name: Deploy Network Stacks first
     uses: ./.github/workflows/deploy-stack.yaml
     with:
       stack_name: network-stack-CloudMart version 2
@@ -44,7 +44,7 @@ jobs:
 
     uses: ./.github/workflows/deploy-stack.yaml
     with:
-      stack_name: data-stack-CloudMart version 2
+      stack_name: data-stack-CloudMart
       template_file: cloudformation/data-stack.yaml
       parameters_file: cloudformation/config/data-parameters.json
       tags_file: cloudformation/config/tags.json
