@@ -30,13 +30,6 @@
   {
     "ParameterKey": "BackupRetentionPeriod",
     "ParameterValue": "1"
-  },
-  {
-    "ParameterKey": "LambdaCodeBucket",
-    "ParameterValue": "kushal-lambda-codefiles-bucket"
-  },
-  {
-    "ParameterKey": "LambdaCodeKey",
-    "ParameterValue": "lambda/db-initializer.zip"
   }
+  
 ]

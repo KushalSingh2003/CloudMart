@@ -227,7 +227,13 @@ Resources:
       VpcId: !Ref CloudMartVPC
 
       SecurityGroupIngress:
-      - Description: MySQL from CloudMart Lambda functions only.
+      - Description: MySQL from CloudMart EC2
+        IpProtocol: tcp
+        FromPort: 3306
+        ToPort: 3306
+        SourceSecurityGroupId: !Ref EC2SecurityGroup
+
+      - Description: MySQL from CloudMart Lambda functions
         IpProtocol: tcp
         FromPort: 3306
         ToPort: 3306

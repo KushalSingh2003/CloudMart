@@ -1,166 +1,166 @@
-import json
-import os
-import urllib.request
-import pymysql
+# import json
+# import os
+# import urllib.request
+# import pymysql
 
 
-def send_response(event, context, status, data=None, reason=None):
-    """
-    Send SUCCESS/FAILED response back to CloudFormation
-    for the Custom Resource.
-    """
+# def send_response(event, context, status, data=None, reason=None):
+#     """
+#     Send SUCCESS/FAILED response back to CloudFormation
+#     for the Custom Resource.
+#     """
 
-    response_url = event["ResponseURL"]
+#     response_url = event["ResponseURL"]
 
-    response_body = {
-        "Status": status,
-        "Reason": reason or "See CloudWatch logs",
-        "PhysicalResourceId": (
-            event.get("PhysicalResourceId")
-            or context.log_stream_name
-        ),
-        "StackId": event["StackId"],
-        "RequestId": event["RequestId"],
-        "LogicalResourceId": event["LogicalResourceId"],
-        "Data": data or {}
-    }
+#     response_body = {
+#         "Status": status,
+#         "Reason": reason or "See CloudWatch logs",
+#         "PhysicalResourceId": (
+#             event.get("PhysicalResourceId")
+#             or context.log_stream_name
+#         ),
+#         "StackId": event["StackId"],
+#         "RequestId": event["RequestId"],
+#         "LogicalResourceId": event["LogicalResourceId"],
+#         "Data": data or {}
+#     }
 
-    body = json.dumps(response_body).encode("utf-8")
+#     body = json.dumps(response_body).encode("utf-8")
 
-    request = urllib.request.Request(
-        response_url,
-        data=body,
-        headers={
-            "content-type": "",
-            "content-length": str(len(body))
-        },
-        method="PUT"
-    )
+#     request = urllib.request.Request(
+#         response_url,
+#         data=body,
+#         headers={
+#             "content-type": "",
+#             "content-length": str(len(body))
+#         },
+#         method="PUT"
+#     )
 
-    with urllib.request.urlopen(request) as response:
-        print(
-            "CloudFormation response status:",
-            response.status
-        )
-
-
-def execute_schema(connection):
-    """
-    Read schema.sql and execute each SQL statement.
-    """
-
-    schema_path = "/var/task/schema.sql"
-
-    with open(schema_path, "r", encoding="utf-8") as file:
-        schema = file.read()
-
-    statements = [
-        statement.strip()
-        for statement in schema.split(";")
-        if statement.strip()
-    ]
-
-    cursor = connection.cursor()
-
-    for statement in statements:
-        print("Executing SQL:")
-        print(statement)
-
-        cursor.execute(statement)
-
-    connection.commit()
-
-    cursor.close()
+#     with urllib.request.urlopen(request) as response:
+#         print(
+#             "CloudFormation response status:",
+#             response.status
+#         )
 
 
-def handler(event, context):
+# def execute_schema(connection):
+#     """
+#     Read schema.sql and execute each SQL statement.
+#     """
 
-    print("Received CloudFormation event:")
-    print(json.dumps(event))
+#     schema_path = "database/schema.sql"
 
-    request_type = event.get("RequestType")
+#     with open(schema_path, "r", encoding="utf-8") as file:
+#         schema = file.read()
 
-    # ------------------------------------------------------------
-    # DELETE
-    # ------------------------------------------------------------
+#     statements = [
+#         statement.strip()
+#         for statement in schema.split(";")
+#         if statement.strip()
+#     ]
 
-    if request_type == "Delete":
+#     cursor = connection.cursor()
 
-        print("Delete request received.")
+#     for statement in statements:
+#         print("Executing SQL:")
+#         print(statement)
 
-        send_response(
-            event,
-            context,
-            "SUCCESS",
-            {
-                "Message": "Database schema was not deleted."
-            }
-        )
+#         cursor.execute(statement)
 
-        return
+#     connection.commit()
 
-    connection = None
+#     cursor.close()
 
-    try:
 
-        # --------------------------------------------------------
-        # Connect to RDS
-        # --------------------------------------------------------
+# def handler(event, context):
 
-        print("Connecting to RDS...")
+#     print("Received CloudFormation event:")
+#     print(json.dumps(event))
 
-        connection = pymysql.connect(
-            host=os.environ["DB_HOST"],
-            port=int(os.environ["DB_PORT"]),
-            user=os.environ["DB_USERNAME"],
-            password=os.environ["DB_PASSWORD"],
-            database=os.environ["DB_NAME"],
-            connect_timeout=20
-        )
+#     request_type = event.get("RequestType")
 
-        print("Connected to RDS successfully.")
+#     # ------------------------------------------------------------
+#     # DELETE
+#     # ------------------------------------------------------------
 
-        # --------------------------------------------------------
-        # Execute schema
-        # --------------------------------------------------------
+#     if request_type == "Delete":
 
-        execute_schema(connection)
+#         print("Delete request received.")
 
-        print("Database schema created successfully.")
+#         send_response(
+#             event,
+#             context,
+#             "SUCCESS",
+#             {
+#                 "Message": "Database schema was not deleted."
+#             }
+#         )
 
-        # --------------------------------------------------------
-        # Tell CloudFormation SUCCESS
-        # --------------------------------------------------------
+#         return
 
-        send_response(
-            event,
-            context,
-            "SUCCESS",
-            {
-                "Message": "CloudMart database schema initialized."
-            }
-        )
+#     connection = None
 
-    except Exception as error:
+#     try:
 
-        print("Database initialization failed.")
-        print(str(error))
+#         # --------------------------------------------------------
+#         # Connect to RDS
+#         # --------------------------------------------------------
 
-        if connection:
-            connection.rollback()
+#         print("Connecting to RDS...")
 
-        send_response(
-            event,
-            context,
-            "FAILED",
-            reason=str(error)
-        )
+#         connection = pymysql.connect(
+#             host=os.environ["DB_HOST"],
+#             port=int(os.environ["DB_PORT"]),
+#             user=os.environ["DB_USERNAME"],
+#             password=os.environ["DB_PASSWORD"],
+#             database=os.environ["DB_NAME"],
+#             connect_timeout=20
+#         )
 
-        raise
+#         print("Connected to RDS successfully.")
 
-    finally:
+#         # --------------------------------------------------------
+#         # Execute schema
+#         # --------------------------------------------------------
 
-        if connection:
-            connection.close()
+#         execute_schema(connection)
 
-        print("Database connection closed.")
+#         print("Database schema created successfully.")
+
+#         # --------------------------------------------------------
+#         # Tell CloudFormation SUCCESS
+#         # --------------------------------------------------------
+
+#         send_response(
+#             event,
+#             context,
+#             "SUCCESS",
+#             {
+#                 "Message": "CloudMart database schema initialized."
+#             }
+#         )
+
+#     except Exception as error:
+
+#         print("Database initialization failed.")
+#         print(str(error))
+
+#         if connection:
+#             connection.rollback()
+
+#         send_response(
+#             event,
+#             context,
+#             "FAILED",
+#             reason=str(error)
+#         )
+
+#         raise
+
+#     finally:
+
+#         if connection:
+#             connection.close()
+
+#         print("Database connection closed.")

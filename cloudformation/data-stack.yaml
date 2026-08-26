@@ -1,8 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 
-Description: 
-  CloudMart Data Stack. Creates the RDS MySQL database using the private
-  subnets and RDS security group created by the Network Stack.
+Description: CloudMart Data Stack. Creates the RDS MySQL database using the private subnets and RDS security group created by the Network Stack.
 
 # ============================================================================
 # PARAMETERS
@@ -14,17 +12,9 @@ Parameters:
     Type: String
     Default: dev
     AllowedValues:
-      - dev
-      - prod
+    - dev
+    - prod
     Description: Deployment environment.
-
-  LambdaCodeBucket:
-    Type: String
-    Description: S3 bucket containing the database initializer Lambda package.
-
-  LambdaCodeKey:
-    Type: String
-    Description: S3 key containing the database initializer Lambda package.
 
   DBInstanceClass:
     Type: String
@@ -57,8 +47,8 @@ Parameters:
     Type: String
     Default: "false"
     AllowedValues:
-      - "true"
-      - "false"
+    - "true"
+    - "false"
     Description: Whether RDS should deploy a standby instance in another AZ.
 
   BackupRetentionPeriod:
@@ -66,7 +56,6 @@ Parameters:
     Default: 7
     MinValue: 0
     Description: Number of days to retain automated backups.
-
 
 # ============================================================================
 # RESOURCES
@@ -83,28 +72,26 @@ Resources:
 
     Properties:
 
-      DBSubnetGroupDescription: 
-        Private subnet group for CloudMart RDS MySQL.
+      DBSubnetGroupDescription: Private subnet group for CloudMart RDS MySQL.
 
       SubnetIds:
 
-        - Fn::ImportValue:
-            Fn::Sub: cloudmart-${Environment}-PrivateSubnetAId
+      - Fn::ImportValue:
+          Fn::Sub: cloudmart-${Environment}-PrivateSubnetAId
 
-        - Fn::ImportValue:
-            Fn::Sub: cloudmart-${Environment}-PrivateSubnetBId
+      - Fn::ImportValue:
+          Fn::Sub: cloudmart-${Environment}-PrivateSubnetBId
 
       Tags:
 
-        - Key: Name
-          Value: !Sub cloudmart-${Environment}-db-subnet-group
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-db-subnet-group
 
-        - Key: Project
-          Value: CloudMart
+      - Key: Project
+        Value: CloudMart
 
-        - Key: Environment
-          Value: !Ref Environment
-
+      - Key: Environment
+        Value: !Ref Environment
 
   # ==========================================================================
   # RDS MYSQL DATABASE
@@ -133,7 +120,6 @@ Resources:
 
       StorageEncrypted: true
 
-
       # -----------------------------------------------------------------------
       # Database configuration
       # -----------------------------------------------------------------------
@@ -146,7 +132,6 @@ Resources:
 
       Port: 3306
 
-
       # -----------------------------------------------------------------------
       # Network configuration
       # -----------------------------------------------------------------------
@@ -155,18 +140,16 @@ Resources:
 
       VPCSecurityGroups:
 
-        - Fn::ImportValue:
-            Fn::Sub: cloudmart-${Environment}-RDSSecurityGroupId
+      - Fn::ImportValue:
+          Fn::Sub: cloudmart-${Environment}-RDSSecurityGroupId
 
       PubliclyAccessible: false
-
 
       # -----------------------------------------------------------------------
       # Availability
       # -----------------------------------------------------------------------
 
       MultiAZ: !Ref MultiAZ
-
 
       # -----------------------------------------------------------------------
       # Backup
@@ -176,13 +159,11 @@ Resources:
 
       CopyTagsToSnapshot: true
 
-
       # -----------------------------------------------------------------------
       # Monitoring / maintenance
       # -----------------------------------------------------------------------
 
       AutoMinorVersionUpgrade: true
-
 
       # -----------------------------------------------------------------------
       # Tags
@@ -190,122 +171,14 @@ Resources:
 
       Tags:
 
-        - Key: Name
-          Value: !Sub cloudmart-${Environment}-mysql
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-mysql
 
-        - Key: Project
-          Value: CloudMart
+      - Key: Project
+        Value: CloudMart
 
-        - Key: Environment
-          Value: !Ref Environment
-
-
-  # ==========================================================================
-  # DATABASE INITIALIZER LAMBDA IAM ROLE
-  # ==========================================================================
-
-  DatabaseInitializerRole:
-    Type: AWS::IAM::Role
-
-    Properties:
-
-      AssumeRolePolicyDocument:
-
-        Version: '2012-10-17'
-
-        Statement:
-
-          - Effect: Allow
-
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-
-            Action:
-              - sts:AssumeRole
-
-      ManagedPolicyArns:
-
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
-
-
-  # ==========================================================================
-  # DATABASE INITIALIZER LAMBDA
-  # ==========================================================================
-
-  DatabaseInitializerLambda:
-    Type: AWS::Lambda::Function
-
-    Properties:
-
-      Runtime: python3.12
-
-      Handler: lambda_function.handler
-
-      Timeout: 300
-
-      MemorySize: 256
-
-      Role: !GetAtt DatabaseInitializerRole.Arn
-
-      Code:
-
-        S3Bucket: !Ref LambdaCodeBucket
-
-        S3Key: !Ref LambdaCodeKey
-
-      VpcConfig:
-
-        SubnetIds:
-
-          - Fn::ImportValue:
-              Fn::Sub: cloudmart-${Environment}-PrivateSubnetAId
-
-          - Fn::ImportValue:
-              Fn::Sub: cloudmart-${Environment}-PrivateSubnetBId
-
-        SecurityGroupIds:
-
-          - Fn::ImportValue:
-              Fn::Sub: cloudmart-${Environment}-RDSSecurityGroupId
-
-      Environment:
-
-        Variables:
-
-          DB_HOST:
-            !GetAtt CloudMartDatabase.Endpoint.Address
-
-          DB_PORT:
-            "3306"
-
-          DB_NAME:
-            !Ref DatabaseName
-
-          DB_USERNAME:
-            !Ref MasterUsername
-
-          DB_PASSWORD:
-            !Ref MasterUserPassword
-
-
-  # ==========================================================================
-  # DATABASE SCHEMA INITIALIZER CUSTOM RESOURCE
-  # ==========================================================================
-
-  DatabaseSchemaInitializer:
-    Type: Custom::DatabaseSchemaInitializer
-
-    DependsOn:
-
-      - CloudMartDatabase
-      - DatabaseInitializerLambda
-
-    Properties:
-
-      ServiceToken:
-        !GetAtt DatabaseInitializerLambda.Arn
-
+      - Key: Environment
+        Value: !Ref Environment
 
 # ============================================================================
 # OUTPUTS
@@ -317,26 +190,21 @@ Outputs:
     Description: CloudMart RDS instance identifier.
     Value: !Ref CloudMartDatabase
 
-
   DBEndpoint:
     Description: CloudMart RDS MySQL endpoint.
     Value: !GetAtt CloudMartDatabase.Endpoint.Address
-
 
   DBPort:
     Description: CloudMart RDS MySQL port.
     Value: !GetAtt CloudMartDatabase.Endpoint.Port
 
-
   DatabaseName:
     Description: CloudMart database name.
     Value: !Ref DatabaseName
 
-
   DBSubnetGroupName:
     Description: CloudMart RDS DB subnet group.
     Value: !Ref CloudMartDBSubnetGroup
-
 
   RDSSecurityGroupId:
     Description: Security group attached to the RDS instance.
