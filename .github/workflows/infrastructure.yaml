@@ -1,32 +1,7 @@
-name: Deploy CloudMart Infrastructure
-
-on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'cloudformation/**'
-      - '.github/workflows/**'
-
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: Target environment
-        required: true
-        default: dev
-        type: choice
-        options:
-          - dev
-          - prod
-
-permissions:
-  id-token: write
-  contents: read
-
 jobs:
 
   network:
-    name: Deploy Network Stack third Attempt
+    name: Deploy Network Stack
     uses: ./.github/workflows/deploy-stack.yaml
     with:
       stack_name: network-stack-CloudMart
@@ -36,9 +11,34 @@ jobs:
       environment: dev
     secrets: inherit
 
+  package-lambda:
+    name: Package Database Initializer
+    needs: network
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create Lambda ZIP
+        run: |
+          cd lambda/db-initializer
+          zip -r ../../db-initializer.zip .
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Upload Lambda ZIP to S3
+        run: |
+          aws s3 cp db-initializer.zip \
+            s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambda/db-initializer.zip
+
   data:
     name: Deploy Data Stack
-    needs: network
+    needs: package-lambda
     uses: ./.github/workflows/deploy-stack.yaml
     with:
       stack_name: data-stack-CloudMart
