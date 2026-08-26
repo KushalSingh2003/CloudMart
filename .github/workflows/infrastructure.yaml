@@ -39,7 +39,7 @@ jobs:
     name: Deploy Network Stacks first
     uses: ./.github/workflows/deploy-stack.yaml
     with:
-      stack_name: network-stack-CloudMart version 2
+      stack_name: network-stack-CloudMart
       template_file: cloudformation/network-stack.yaml
       parameters_file: cloudformation/config/network-parameters.json
       tags_file: cloudformation/config/tags.json
