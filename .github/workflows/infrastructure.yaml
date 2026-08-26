@@ -27,7 +27,7 @@ permissions:
 jobs:
 
   network:
-    name: Deploy Network Stack second attempt
+    name: Deploy Network Stack third attempt
     uses: ./.github/workflows/deploy-stack.yaml
     with:
       stack_name: network-stack-CloudMart
