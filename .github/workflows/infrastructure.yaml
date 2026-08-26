@@ -4,6 +4,7 @@ on:
   push:
     branches:
     - main
+    - feature/database-initializer
     paths:
     - 'cloudformation/**'
     - '.github/workflows/**'
