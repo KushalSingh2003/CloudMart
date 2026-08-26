@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 
-Description: >
+Description: 
   CloudMart Data Stack. Creates the RDS MySQL database using the private
   subnets and RDS security group created by the Network Stack.
 
