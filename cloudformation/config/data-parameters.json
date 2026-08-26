@@ -21,7 +21,7 @@
   },
   {
     "ParameterKey": "MasterUserPassword",
-    "ParameterValue": "YOUR_PASSWORD"
+    "ParameterValue": "kushal123"
   },
   {
     "ParameterKey": "MultiAZ",
@@ -29,11 +29,11 @@
   },
   {
     "ParameterKey": "BackupRetentionPeriod",
-    "ParameterValue": "0"
+    "ParameterValue": "1"
   },
   {
     "ParameterKey": "LambdaCodeBucket",
-    "ParameterValue": "YOUR_CFN_BUCKET"
+    "ParameterValue": "kushal-lambda-codefiles-bucket"
   },
   {
     "ParameterKey": "LambdaCodeKey",
