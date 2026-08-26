@@ -21,22 +21,8 @@ permissions:
   contents: read
 
 jobs:
-
-  debug-trigger:
-    name: Debug workflow trigger
-    runs-on: ubuntu-latest
-    steps:
-    - name: Print event details
-      run: |
-        echo "Ref: ${{ github.ref }}"
-        echo "Ref name: ${{ github.ref_name }}"
-        echo "Event name: ${{ github.event_name }}"
-        echo "Repository: ${{ github.repository }}"
-        echo "SHA: ${{ github.sha }}"
-        echo "Actor: ${{ github.actor }}"
-
   network:
-    name: Deploy Network Stacks first
+    name: Deploy Network Stacks first attempt
     uses: ./.github/workflows/deploy-stack.yaml
     with:
       stack_name: network-stack-CloudMart
