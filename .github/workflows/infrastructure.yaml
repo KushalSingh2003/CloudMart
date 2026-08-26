@@ -3,11 +3,7 @@ name: Deploy CloudMart Infrastructure
 on:
   push:
     branches:
-    - '**'
-    paths:
-    - 'cloudformation/**'
-    - '.github/workflows/**'
-    - 'lambda/**'
+      - '**'
 
   workflow_dispatch:
     inputs:
