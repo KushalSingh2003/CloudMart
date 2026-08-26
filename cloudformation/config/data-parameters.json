@@ -29,6 +29,14 @@
   },
   {
     "ParameterKey": "BackupRetentionPeriod",
-    "ParameterValue": "1"
+    "ParameterValue": "0"
+  },
+  {
+    "ParameterKey": "LambdaCodeBucket",
+    "ParameterValue": "YOUR_CFN_BUCKET"
+  },
+  {
+    "ParameterKey": "LambdaCodeKey",
+    "ParameterValue": "lambda/db-initializer.zip"
   }
 ]
