@@ -3,8 +3,7 @@ name: Deploy CloudMart Infrastructure
 on:
   push:
     branches:
-    - main
-    - feature/database-initializer
+    - '**'
     paths:
     - 'cloudformation/**'
     - '.github/workflows/**'
