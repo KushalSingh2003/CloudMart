@@ -18,7 +18,9 @@ Parameters:
   LambdaCodeBucket:
     Type: String
     Description: S3 bucket containing Lambda deployment packages
-
+  AuthToken:
+    Type: String
+    NoEcho: true
 # ============================================================
 # RESOURCES
 # ============================================================
@@ -72,7 +74,13 @@ Resources:
     Properties:
       Roles:
       - !Ref ApplicationEC2Role
-
+  AuthTokenParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /cloudmart/${Environment}/auth-token
+      Type: SecureString
+      Value: !Ref AuthToken
+      Description: CloudMart API authentication token
   # ==========================================================
   # EC2 INSTANCE
   # ==========================================================
