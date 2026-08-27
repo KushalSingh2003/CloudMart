@@ -26,6 +26,16 @@ Parameters:
 Resources:
 
   # ==========================================================
+  # EVENTBRIDGE EVENT BUS
+  # ==========================================================
+
+  CloudMartEventBus:
+    Type: AWS::Events::EventBus
+
+    Properties:
+      Name: !Sub cloudmart-${Environment}-event-bus
+
+  # ==========================================================
   # IAM ROLE - EC2
   # ==========================================================
 
@@ -76,22 +86,22 @@ Resources:
 
       InstanceType: t3.micro
 
-      SubnetId:
-        Fn::ImportValue: !Sub cloudmart-${Environment}-public-subnet-id
-
-      SecurityGroupIds:
-      - Fn::ImportValue: !Sub cloudmart-${Environment}-ec2-sg-id
+      NetworkInterfaces:
+      - DeviceIndex: '0'
+        AssociatePublicIpAddress: true
+        SubnetId:
+          Fn::ImportValue: !Sub cloudmart-${Environment}-public-subnet-id
+        GroupSet:
+        - Fn::ImportValue: !Sub cloudmart-${Environment}-ec2-sg-id
 
       IamInstanceProfile: !Ref ApplicationEC2InstanceProfile
-
-      AssociatePublicIpAddress: true
 
       Tags:
       - Key: Name
         Value: !Sub cloudmart-${Environment}-application-ec2
 
   # ==========================================================
-  # LAMBDA IAM ROLE - ORDER
+  # ORDER LAMBDA IAM ROLE
   # ==========================================================
 
   OrderLambdaRole:
@@ -114,6 +124,7 @@ Resources:
       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
       Policies:
+
       - PolicyName: ReadDBCredentials
         PolicyDocument:
           Version: '2012-10-17'
@@ -137,7 +148,7 @@ Resources:
         Value: !Sub cloudmart-${Environment}-order-lambda-role
 
   # ==========================================================
-  # LAMBDA IAM ROLE - PRODUCT
+  # PRODUCT LAMBDA IAM ROLE
   # ==========================================================
 
   ProductLambdaRole:
@@ -159,27 +170,32 @@ Resources:
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
-    Policies:
-    - PolicyName: ReadDBCredentials
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-        - Effect: Allow
-          Action:
-          - ssm:GetParameter
-          Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db/*
+      Policies:
 
-    - PolicyName: PublishEvents
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-        - Effect: Allow
-          Action:
-          - events:PutEvents
-          Resource: !GetAtt CloudMartEventBus.Arn
+      - PolicyName: ReadDBCredentials
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - ssm:GetParameter
+            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db/*
+
+      - PolicyName: PublishEvents
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - events:PutEvents
+            Resource: !GetAtt CloudMartEventBus.Arn
+
+      Tags:
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-product-lambda-role
 
   # ==========================================================
-  # LAMBDA IAM ROLE - CHECK STOCK
+  # CHECK STOCK LAMBDA IAM ROLE
   # ==========================================================
 
   CheckStockLambdaRole:
@@ -200,7 +216,18 @@ Resources:
 
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
       Policies:
+
+      - PolicyName: ReadDBCredentials
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - ssm:GetParameter
+            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db/*
+
       - PolicyName: PublishEvents
         PolicyDocument:
           Version: '2012-10-17'
@@ -210,8 +237,12 @@ Resources:
             - events:PutEvents
             Resource: !GetAtt CloudMartEventBus.Arn
 
+      Tags:
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-check-stock-lambda-role
+
   # ==========================================================
-  # LAMBDA IAM ROLE - REPORT
+  # REPORT LAMBDA IAM ROLE
   # ==========================================================
 
   ReportLambdaRole:
@@ -233,6 +264,21 @@ Resources:
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
+      Policies:
+
+      - PolicyName: ReadDBCredentials
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - ssm:GetParameter
+            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db/*
+
+      Tags:
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-report-lambda-role
+
   # ==========================================================
   # ORDER LAMBDA
   # ==========================================================
@@ -241,7 +287,6 @@ Resources:
     Type: AWS::Lambda::Function
 
     Properties:
-
       FunctionName: !Sub cloudmart-${Environment}-order-lambda
 
       Runtime: python3.12
@@ -256,14 +301,7 @@ Resources:
 
       Code:
         S3Bucket: !Ref LambdaCodeBucket
-        S3Key: lambda/order.zip
-
-      Environment:
-        Variables:
-          DB_HOST:
-            Fn::ImportValue: !Sub cloudmart-${Environment}-rds-endpoint
-          DB_PORT:
-            Fn::ImportValue: !Sub cloudmart-${Environment}-rds-port
+        S3Key: lambdas/order.zip
 
   # ==========================================================
   # PRODUCT LAMBDA
@@ -273,7 +311,6 @@ Resources:
     Type: AWS::Lambda::Function
 
     Properties:
-
       FunctionName: !Sub cloudmart-${Environment}-product-lambda
 
       Runtime: python3.12
@@ -288,14 +325,7 @@ Resources:
 
       Code:
         S3Bucket: !Ref LambdaCodeBucket
-        S3Key: lambda/product.zip
-
-      Environment:
-        Variables:
-          DB_HOST:
-            Fn::ImportValue: !Sub cloudmart-${Environment}-rds-endpoint
-          DB_PORT:
-            Fn::ImportValue: !Sub cloudmart-${Environment}-rds-port
+        S3Key: lambdas/product.zip
 
   # ==========================================================
   # CHECK STOCK LAMBDA
@@ -305,7 +335,6 @@ Resources:
     Type: AWS::Lambda::Function
 
     Properties:
-
       FunctionName: !Sub cloudmart-${Environment}-check-stock-lambda
 
       Runtime: python3.12
@@ -320,14 +349,7 @@ Resources:
 
       Code:
         S3Bucket: !Ref LambdaCodeBucket
-        S3Key: lambda/check-stock.zip
-
-      Environment:
-        Variables:
-          DB_HOST:
-            Fn::ImportValue: !Sub cloudmart-${Environment}-rds-endpoint
-          DB_PORT:
-            Fn::ImportValue: !Sub cloudmart-${Environment}-rds-port
+        S3Key: lambdas/stock_change.zip
 
   # ==========================================================
   # REPORT LAMBDA
@@ -337,7 +359,6 @@ Resources:
     Type: AWS::Lambda::Function
 
     Properties:
-
       FunctionName: !Sub cloudmart-${Environment}-report-lambda
 
       Runtime: python3.12
@@ -352,24 +373,16 @@ Resources:
 
       Code:
         S3Bucket: !Ref LambdaCodeBucket
-        S3Key: lambda/report.zip
-
-      Environment:
-        Variables:
-          DB_HOST:
-            Fn::ImportValue: !Sub cloudmart-${Environment}-rds-endpoint
-          DB_PORT:
-            Fn::ImportValue: !Sub cloudmart-${Environment}-rds-port
+        S3Key: lambdas/report.zip
 
   # ==========================================================
-  # LAMBDA AUTHORIZER
+  # LAMBDA AUTHORIZER ROLE
   # ==========================================================
 
   LambdaAuthorizerRole:
     Type: AWS::IAM::Role
 
     Properties:
-
       RoleName: !Sub cloudmart-${Environment}-authorizer-role
 
       AssumeRolePolicyDocument:
@@ -384,7 +397,9 @@ Resources:
 
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
       Policies:
+
       - PolicyName: ReadAuthenticationToken
         PolicyDocument:
           Version: '2012-10-17'
@@ -392,13 +407,20 @@ Resources:
           - Effect: Allow
             Action:
             - ssm:GetParameter
-          Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/auth-token
+            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/auth-token
+
+      Tags:
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-authorizer-role
+
+  # ==========================================================
+  # LAMBDA AUTHORIZER
+  # ==========================================================
 
   LambdaAuthorizer:
     Type: AWS::Lambda::Function
 
     Properties:
-
       FunctionName: !Sub cloudmart-${Environment}-authorizer
 
       Runtime: python3.12
@@ -411,7 +433,7 @@ Resources:
 
       Code:
         S3Bucket: !Ref LambdaCodeBucket
-        S3Key: lambda/authorizer.zip
+        S3Key: lambdas/authorizer.zip
 
   # ==========================================================
   # API GATEWAY
@@ -421,7 +443,6 @@ Resources:
     Type: AWS::ApiGateway::RestApi
 
     Properties:
-
       Name: !Sub cloudmart-${Environment}-api
 
       EndpointConfiguration:
@@ -429,7 +450,7 @@ Resources:
         - REGIONAL
 
   # ==========================================================
-  # API GATEWAY ROOT RESOURCES
+  # API GATEWAY RESOURCES
   # ==========================================================
 
   OrdersResource:
@@ -472,7 +493,6 @@ Resources:
     Type: AWS::SNS::Topic
 
     Properties:
-
       TopicName: !Sub cloudmart-${Environment}-notifications
 
       Tags:
@@ -487,7 +507,6 @@ Resources:
     Type: AWS::SNS::Subscription
 
     Properties:
-
       TopicArn: !Ref CloudMartSNSTopic
 
       Protocol: email
@@ -495,19 +514,21 @@ Resources:
       Endpoint: your-email@example.com
 
   # ==========================================================
-  # EVENTBRIDGE RULE - ORDER EVENTS
+  # EVENTBRIDGE RULE
   # ==========================================================
 
   OrderEventRule:
     Type: AWS::Events::Rule
 
     Properties:
-
       Name: !Sub cloudmart-${Environment}-order-events
+
+      EventBusName: !Ref CloudMartEventBus
 
       EventPattern:
         source:
         - cloudmart
+
         detail-type:
         - OrderEvent
 
@@ -525,7 +546,6 @@ Resources:
     Type: AWS::Lambda::Permission
 
     Properties:
-
       FunctionName: !Ref OrderLambda
 
       Action: lambda:InvokeFunction
@@ -535,14 +555,13 @@ Resources:
       SourceArn: !GetAtt OrderEventRule.Arn
 
   # ==========================================================
-  # S3 APPLICATION BUCKET
+  # APPLICATION S3 BUCKET
   # ==========================================================
 
   ApplicationS3Bucket:
     Type: AWS::S3::Bucket
 
     Properties:
-
       BucketName: !Sub cloudmart-${Environment}-application-${AWS::AccountId}
 
       VersioningConfiguration:
@@ -575,6 +594,10 @@ Outputs:
   EC2Role:
     Description: EC2 IAM Role
     Value: !Ref ApplicationEC2Role
+
+  EventBusArn:
+    Description: CloudMart EventBridge Event Bus ARN
+    Value: !GetAtt CloudMartEventBus.Arn
 
   ApiGatewayId:
     Description: API Gateway ID
