@@ -78,6 +78,7 @@ jobs:
         TAGS_FILE: ${{ inputs.tags_file }}
         TEMPLATE_S3_URL: ${{ steps.upload.outputs.template_s3_url }}
         AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
+
       run: |
         chmod +x .github/scripts/create-changeset.sh
         .github/scripts/create-changeset.sh

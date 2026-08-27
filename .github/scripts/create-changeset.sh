@@ -43,13 +43,18 @@ fi
 echo ""
 echo "Creating change set:"
 echo "${CHANGESET_NAME}"
+PARAMETERS_WITH_AUTH=$(mktemp)
+
+jq --arg token "$AUTH_TOKEN" \
+  '. + [{"ParameterKey":"AuthToken","ParameterValue":$token}]' \
+  "$PARAMETERS_FILE" > "$PARAMETERS_WITH_AUTH"
 
 aws cloudformation create-change-set \
     --stack-name "${STACK_NAME}" \
     --change-set-name "${CHANGESET_NAME}" \
     --change-set-type "${CHANGESET_TYPE}" \
     --template-url "${TEMPLATE_S3_URL}" \
-    --parameters "file://${PARAMETERS_FILE}" \
+    --parameters "file://${PARAMETERS_WITH_AUTH}" \
     --tags "file://${TAGS_FILE}" \
     --capabilities CAPABILITY_NAMED_IAM
 
