@@ -443,6 +443,10 @@ Resources:
         S3Bucket: !Ref LambdaCodeBucket
         S3Key: lambdas/authorizer.zip
 
+      Environment:
+        Variables:
+          AUTH_TOKEN_PARAMETER: !Sub /cloudmart/${Environment}/auth-token
+
   # ==========================================================
   # API GATEWAY
   # ==========================================================
