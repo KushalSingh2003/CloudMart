@@ -130,7 +130,7 @@ jobs:
     - name: Upload Lambda packages to S3
       run: |
         aws s3 cp order.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/order.zip
-        aws s3 cp product.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/product/run-33072127667/product.zip
+        aws s3 cp product-v2.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/product-v2.zip
         aws s3 cp report.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/report.zip
         aws s3 cp stock_change.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/stock_change.zip
         aws s3 cp authorizer.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/authorizer.zip/
