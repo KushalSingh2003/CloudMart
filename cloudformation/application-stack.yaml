@@ -2,7 +2,6 @@ AWSTemplateFormatVersion: '2010-09-09'
 
 Description: CloudMart Application Stack
 
-
 # ============================================================
 # PARAMETERS
 # ============================================================
@@ -13,20 +12,18 @@ Parameters:
     Type: String
     Default: dev
     AllowedValues:
-      - dev
-      - prod
+    - dev
+    - prod
 
   LambdaCodeBucket:
     Type: String
     Description: S3 bucket containing Lambda deployment packages
-
 
 # ============================================================
 # RESOURCES
 # ============================================================
 
 Resources:
-
 
   # ==========================================================
   # IAM ROLE - EC2
@@ -41,20 +38,19 @@ Resources:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - ec2.amazonaws.com
-            Action:
-              - sts:AssumeRole
+        - Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+          Action:
+          - sts:AssumeRole
 
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
 
       Tags:
-        - Key: Name
-          Value: !Sub cloudmart-${Environment}-ec2-role
-
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-ec2-role
 
   # ==========================================================
   # EC2 INSTANCE PROFILE
@@ -65,8 +61,7 @@ Resources:
 
     Properties:
       Roles:
-        - !Ref ApplicationEC2Role
-
+      - !Ref ApplicationEC2Role
 
   # ==========================================================
   # EC2 INSTANCE
@@ -85,17 +80,15 @@ Resources:
         Fn::ImportValue: !Sub cloudmart-${Environment}-public-subnet-id
 
       SecurityGroupIds:
-        - Fn::ImportValue: !Sub cloudmart-${Environment}-ec2-sg-id
+      - Fn::ImportValue: !Sub cloudmart-${Environment}-ec2-sg-id
 
-      IamInstanceProfile:
-        !Ref ApplicationEC2InstanceProfile
+      IamInstanceProfile: !Ref ApplicationEC2InstanceProfile
 
       AssociatePublicIpAddress: true
 
       Tags:
-        - Key: Name
-          Value: !Sub cloudmart-${Environment}-application-ec2
-
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-application-ec2
 
   # ==========================================================
   # LAMBDA IAM ROLE - ORDER
@@ -110,12 +103,12 @@ Resources:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action:
-              - sts:AssumeRole
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
 
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
@@ -123,26 +116,25 @@ Resources:
       Policies:
       - PolicyName: ReadDBCredentials
         PolicyDocument:
-         Version: '2012-10-17'
-         Statement:
+          Version: '2012-10-17'
+          Statement:
           - Effect: Allow
             Action:
             - ssm:GetParameter
             Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db/*
 
       - PolicyName: PublishEvents
-         PolicyDocument:
+        PolicyDocument:
           Version: '2012-10-17'
           Statement:
-           - Effect: Allow
-             Action:
-             - events:PutEvents
-             Resource: !GetAtt CloudMartEventBus.Arn
+          - Effect: Allow
+            Action:
+            - events:PutEvents
+            Resource: !GetAtt CloudMartEventBus.Arn
 
       Tags:
-        - Key: Name
-          Value: !Sub cloudmart-${Environment}-order-lambda-role
-
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-order-lambda-role
 
   # ==========================================================
   # LAMBDA IAM ROLE - PRODUCT
@@ -157,35 +149,34 @@ Resources:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action:
-              - sts:AssumeRole
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
 
       ManagedPolicyArns:
-       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
-    Policies: 
-     - PolicyName: ReadDBCredentials
-        PolicyDocument:
-         Version: '2012-10-17'
-         Statement:
-           - Effect: Allow
-             Action:
-             - ssm:GetParameter
-             Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db/*
+    Policies:
+    - PolicyName: ReadDBCredentials
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - ssm:GetParameter
+          Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db/*
 
-     - PolicyName: PublishEvents
-        PolicyDocument:
-         Version: '2012-10-17'
-         Statement:
-         - Effect: Allow
-           Action:
-            - events:PutEvents
-           Resource: !GetAtt CloudMartEventBus.Arn
-
+    - PolicyName: PublishEvents
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - events:PutEvents
+          Resource: !GetAtt CloudMartEventBus.Arn
 
   # ==========================================================
   # LAMBDA IAM ROLE - CHECK STOCK
@@ -200,27 +191,24 @@ Resources:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action:
-              - sts:AssumeRole
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
 
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      Policies: 
-     
-
-       - PolicyName: PublishEvents
-          PolicyDocument:
-           Version: '2012-10-17'
-           Statement:
-           - Effect: Allow
-           Action:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: PublishEvents
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
             - events:PutEvents
-           Resource: !GetAtt CloudMartEventBus.Arn
-
+            Resource: !GetAtt CloudMartEventBus.Arn
 
   # ==========================================================
   # LAMBDA IAM ROLE - REPORT
@@ -235,16 +223,15 @@ Resources:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action:
-              - sts:AssumeRole
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
 
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
   # ==========================================================
   # ORDER LAMBDA
@@ -278,7 +265,6 @@ Resources:
           DB_PORT:
             Fn::ImportValue: !Sub cloudmart-${Environment}-rds-port
 
-
   # ==========================================================
   # PRODUCT LAMBDA
   # ==========================================================
@@ -310,7 +296,6 @@ Resources:
             Fn::ImportValue: !Sub cloudmart-${Environment}-rds-endpoint
           DB_PORT:
             Fn::ImportValue: !Sub cloudmart-${Environment}-rds-port
-
 
   # ==========================================================
   # CHECK STOCK LAMBDA
@@ -344,7 +329,6 @@ Resources:
           DB_PORT:
             Fn::ImportValue: !Sub cloudmart-${Environment}-rds-port
 
-
   # ==========================================================
   # REPORT LAMBDA
   # ==========================================================
@@ -377,7 +361,6 @@ Resources:
           DB_PORT:
             Fn::ImportValue: !Sub cloudmart-${Environment}-rds-port
 
-
   # ==========================================================
   # LAMBDA AUTHORIZER
   # ==========================================================
@@ -392,25 +375,24 @@ Resources:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action:
-              - sts:AssumeRole
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
 
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
-        - PolicyName: ReadAuthenticationToken
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - ssm:GetParameter
-            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/auth-token
-
+      - PolicyName: ReadAuthenticationToken
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - ssm:GetParameter
+          Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/auth-token
 
   LambdaAuthorizer:
     Type: AWS::Lambda::Function
@@ -431,7 +413,6 @@ Resources:
         S3Bucket: !Ref LambdaCodeBucket
         S3Key: lambda/authorizer.zip
 
-
   # ==========================================================
   # API GATEWAY
   # ==========================================================
@@ -445,8 +426,7 @@ Resources:
 
       EndpointConfiguration:
         Types:
-          - REGIONAL
-
+        - REGIONAL
 
   # ==========================================================
   # API GATEWAY ROOT RESOURCES
@@ -460,7 +440,6 @@ Resources:
       ParentId: !GetAtt CloudMartApi.RootResourceId
       PathPart: orders
 
-
   ProductsResource:
     Type: AWS::ApiGateway::Resource
 
@@ -468,7 +447,6 @@ Resources:
       RestApiId: !Ref CloudMartApi
       ParentId: !GetAtt CloudMartApi.RootResourceId
       PathPart: products
-
 
   StockResource:
     Type: AWS::ApiGateway::Resource
@@ -478,7 +456,6 @@ Resources:
       ParentId: !GetAtt CloudMartApi.RootResourceId
       PathPart: stock
 
-
   ReportsResource:
     Type: AWS::ApiGateway::Resource
 
@@ -486,7 +463,6 @@ Resources:
       RestApiId: !Ref CloudMartApi
       ParentId: !GetAtt CloudMartApi.RootResourceId
       PathPart: reports
-
 
   # ==========================================================
   # SNS TOPIC
@@ -500,9 +476,8 @@ Resources:
       TopicName: !Sub cloudmart-${Environment}-notifications
 
       Tags:
-        - Key: Name
-          Value: !Sub cloudmart-${Environment}-notifications
-
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-notifications
 
   # ==========================================================
   # SNS SUBSCRIPTION
@@ -519,7 +494,6 @@ Resources:
 
       Endpoint: your-email@example.com
 
-
   # ==========================================================
   # EVENTBRIDGE RULE - ORDER EVENTS
   # ==========================================================
@@ -533,16 +507,15 @@ Resources:
 
       EventPattern:
         source:
-          - cloudmart
+        - cloudmart
         detail-type:
-          - OrderEvent
+        - OrderEvent
 
       State: ENABLED
 
       Targets:
-        - Arn: !GetAtt OrderLambda.Arn
-          Id: OrderLambdaTarget
-
+      - Arn: !GetAtt OrderLambda.Arn
+        Id: OrderLambdaTarget
 
   # ==========================================================
   # LAMBDA PERMISSION FOR EVENTBRIDGE
@@ -560,7 +533,6 @@ Resources:
       Principal: events.amazonaws.com
 
       SourceArn: !GetAtt OrderEventRule.Arn
-
 
   # ==========================================================
   # S3 APPLICATION BUCKET
@@ -583,9 +555,8 @@ Resources:
         RestrictPublicBuckets: true
 
       Tags:
-        - Key: Name
-          Value: !Sub cloudmart-${Environment}-application-bucket
-
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-application-bucket
 
 # ============================================================
 # OUTPUTS

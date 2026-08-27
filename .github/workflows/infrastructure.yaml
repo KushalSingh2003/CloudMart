@@ -45,7 +45,7 @@ jobs:
   #     environment: dev
   #   secrets: inherit
   package-lambdas:
-    name: Package Lambda Functions second  attempt
+    name: Package Lambda Functions third  attempt
 
     runs-on: ubuntu-latest
 
