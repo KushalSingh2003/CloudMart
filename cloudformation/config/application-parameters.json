@@ -1,0 +1,1 @@
+[ { "ParameterKey": "Environment", "ParameterValue": "dev" }, { "ParameterKey": "LambdaCodeBucket", "ParameterValue": "kushal-lambda-codefiles-bucket" } ]
