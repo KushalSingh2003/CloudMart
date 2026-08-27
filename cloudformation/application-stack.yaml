@@ -446,6 +446,23 @@ Resources:
       Environment:
         Variables:
           AUTH_TOKEN_PARAMETER: !Sub /cloudmart/${Environment}/auth-token
+  AuthorizerLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref LambdaAuthorizer
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${CloudMartApi}/*
+  CloudMartAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    Properties:
+      Name: CloudMartAuthorizer
+      RestApiId: !Ref CloudMartApi
+      Type: REQUEST
+      AuthorizerUri: !Sub
+        - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AuthorizerArn}/invocations
+        - AuthorizerArn: !GetAtt LambdaAuthorizer.Arn
+      IdentitySource: method.request.header.Authorization
 
   # ==========================================================
   # API GATEWAY
@@ -460,6 +477,14 @@ Resources:
       EndpointConfiguration:
         Types:
         - REGIONAL
+
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+    - ProductsGetMethod
+    Properties:
+      RestApiId: !Ref CloudMartApi
+      StageName: dev
 
   # ==========================================================
   # API GATEWAY RESOURCES
@@ -480,6 +505,30 @@ Resources:
       RestApiId: !Ref CloudMartApi
       ParentId: !GetAtt CloudMartApi.RootResourceId
       PathPart: products
+  ProductsGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref CloudMartApi
+      ResourceId: !Ref ProductsResource
+      HttpMethod: GET
+
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref CloudMartAuthorizer
+
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ProductLambdaArn}/invocations
+          - ProductLambdaArn: !GetAtt ProductLambda.Arn
+
+  ProductLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ProductLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${CloudMartApi}/*/GET/products
 
   StockResource:
     Type: AWS::ApiGateway::Resource
