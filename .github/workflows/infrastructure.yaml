@@ -45,7 +45,7 @@ jobs:
   #     environment: dev
   #   secrets: inherit
   package-lambdas:
-    name: Package Lambda Functions first attempt
+    name: Package Lambda Functions second  attempt
 
     runs-on: ubuntu-latest
 
@@ -133,7 +133,7 @@ jobs:
         aws s3 cp product.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/product.zip
         aws s3 cp report.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/report.zip
         aws s3 cp stock_change.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/stock_change.zip
-        aws s3 cp authorizer.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas  /authorizer.zip
+        aws s3 cp authorizer.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas /authorizer.zip
   application:
     name: Deploy Application Stack
 
