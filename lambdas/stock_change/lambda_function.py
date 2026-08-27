@@ -1,0 +1,1 @@
+print("Hello from the Stock Change Lambda function!")
