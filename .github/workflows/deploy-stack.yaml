@@ -23,6 +23,9 @@ on:
       environment:
         required: true
         type: string
+    secrets:
+      AUTH_TOKEN:
+        required: true
 
 permissions:
   id-token: write
@@ -41,54 +44,55 @@ jobs:
 
     steps:
 
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ env.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-          role-session-name: GitHubActions-${{ inputs.stack_name }}-${{ github.run_id }}
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ env.AWS_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
+        role-session-name: GitHubActions-${{ inputs.stack_name }}-${{ github.run_id }}
 
-      - name: Validate CloudFormation template
-        env:
-          TEMPLATE_FILE: ${{ inputs.template_file }}
-        run: |
-          chmod +x .github/scripts/validate-stack.sh
-          .github/scripts/validate-stack.sh
+    - name: Validate CloudFormation template
+      env:
+        TEMPLATE_FILE: ${{ inputs.template_file }}
+      run: |
+        chmod +x .github/scripts/validate-stack.sh
+        .github/scripts/validate-stack.sh
 
-      - name: Upload template to S3
-        id: upload
-        env:
-          TEMPLATE_FILE: ${{ inputs.template_file }}
-          STACK_NAME: ${{ inputs.stack_name }}
-        run: |
-          chmod +x .github/scripts/upload-template.sh
-          .github/scripts/upload-template.sh
+    - name: Upload template to S3
+      id: upload
+      env:
+        TEMPLATE_FILE: ${{ inputs.template_file }}
+        STACK_NAME: ${{ inputs.stack_name }}
+      run: |
+        chmod +x .github/scripts/upload-template.sh
+        .github/scripts/upload-template.sh
 
-      - name: Create Change Set
-        id: create-changeset
-        env:
-          STACK_NAME: ${{ inputs.stack_name }}
-          PARAMETERS_FILE: ${{ inputs.parameters_file }}
-          TAGS_FILE: ${{ inputs.tags_file }}
-          TEMPLATE_S3_URL: ${{ steps.upload.outputs.template_s3_url }}
-        run: |
-          chmod +x .github/scripts/create-changeset.sh
-          .github/scripts/create-changeset.sh
+    - name: Create Change Set
+      id: create-changeset
+      env:
+        STACK_NAME: ${{ inputs.stack_name }}
+        PARAMETERS_FILE: ${{ inputs.parameters_file }}
+        TAGS_FILE: ${{ inputs.tags_file }}
+        TEMPLATE_S3_URL: ${{ steps.upload.outputs.template_s3_url }}
+        AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
+      run: |
+        chmod +x .github/scripts/create-changeset.sh
+        .github/scripts/create-changeset.sh
 
-      - name: Execute Change Set
-        env:
-          STACK_NAME: ${{ inputs.stack_name }}
-          CHANGESET_NAME: ${{ steps.create-changeset.outputs.changeset_name }}
-        run: |
-          chmod +x .github/scripts/execute-changeset.sh
-          .github/scripts/execute-changeset.sh
+    - name: Execute Change Set
+      env:
+        STACK_NAME: ${{ inputs.stack_name }}
+        CHANGESET_NAME: ${{ steps.create-changeset.outputs.changeset_name }}
+      run: |
+        chmod +x .github/scripts/execute-changeset.sh
+        .github/scripts/execute-changeset.sh
 
-      - name: Verify Stack
-        env:
-          STACK_NAME: ${{ inputs.stack_name }}
-        run: |
-          chmod +x .github/scripts/verify-stack.sh
-          .github/scripts/verify-stack.sh
+    - name: Verify Stack
+      env:
+        STACK_NAME: ${{ inputs.stack_name }}
+      run: |
+        chmod +x .github/scripts/verify-stack.sh
+        .github/scripts/verify-stack.sh

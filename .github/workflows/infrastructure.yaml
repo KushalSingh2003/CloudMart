@@ -145,5 +145,5 @@ jobs:
       parameters_file: cloudformation/config/application-parameters.json
       tags_file: cloudformation/config/tags.json
       environment: dev
-      auth_token: ${{ secrets.AUTH_TOKEN }}
+
     secrets: inherit
