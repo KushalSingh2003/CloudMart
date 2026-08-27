@@ -1,1 +1,2 @@
-print("Hello from the Product Lambda function!")
+def handler(event, context):
+    print("Hello from the Product Lambda function!")
