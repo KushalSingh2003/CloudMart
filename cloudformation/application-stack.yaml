@@ -1,0 +1,622 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: CloudMart Application Stack
+
+
+# ============================================================
+# PARAMETERS
+# ============================================================
+
+Parameters:
+
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+
+  LambdaCodeBucket:
+    Type: String
+    Description: S3 bucket containing Lambda deployment packages
+
+
+# ============================================================
+# RESOURCES
+# ============================================================
+
+Resources:
+
+
+  # ==========================================================
+  # IAM ROLE - EC2
+  # ==========================================================
+
+  ApplicationEC2Role:
+    Type: AWS::IAM::Role
+
+    Properties:
+      RoleName: !Sub cloudmart-${Environment}-ec2-role
+
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+
+      Tags:
+        - Key: Name
+          Value: !Sub cloudmart-${Environment}-ec2-role
+
+
+  # ==========================================================
+  # EC2 INSTANCE PROFILE
+  # ==========================================================
+
+  ApplicationEC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+
+    Properties:
+      Roles:
+        - !Ref ApplicationEC2Role
+
+
+  # ==========================================================
+  # EC2 INSTANCE
+  # ==========================================================
+
+  ApplicationEC2:
+    Type: AWS::EC2::Instance
+
+    Properties:
+
+      ImageId: '{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}'
+
+      InstanceType: t3.micro
+
+      SubnetId:
+        Fn::ImportValue: !Sub cloudmart-${Environment}-public-subnet-id
+
+      SecurityGroupIds:
+        - Fn::ImportValue: !Sub cloudmart-${Environment}-ec2-sg-id
+
+      IamInstanceProfile:
+        !Ref ApplicationEC2InstanceProfile
+
+      AssociatePublicIpAddress: true
+
+      Tags:
+        - Key: Name
+          Value: !Sub cloudmart-${Environment}-application-ec2
+
+
+  # ==========================================================
+  # LAMBDA IAM ROLE - ORDER
+  # ==========================================================
+
+  OrderLambdaRole:
+    Type: AWS::IAM::Role
+
+    Properties:
+      RoleName: !Sub cloudmart-${Environment}-order-lambda-role
+
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+      Policies:
+      - PolicyName: ReadDBCredentials
+        PolicyDocument:
+         Version: '2012-10-17'
+         Statement:
+          - Effect: Allow
+            Action:
+            - ssm:GetParameter
+            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db/*
+
+      - PolicyName: PublishEvents
+         PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+           - Effect: Allow
+             Action:
+             - events:PutEvents
+             Resource: !GetAtt CloudMartEventBus.Arn
+
+      Tags:
+        - Key: Name
+          Value: !Sub cloudmart-${Environment}-order-lambda-role
+
+
+  # ==========================================================
+  # LAMBDA IAM ROLE - PRODUCT
+  # ==========================================================
+
+  ProductLambdaRole:
+    Type: AWS::IAM::Role
+
+    Properties:
+      RoleName: !Sub cloudmart-${Environment}-product-lambda-role
+
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+
+      ManagedPolicyArns:
+       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+    Policies: 
+     - PolicyName: ReadDBCredentials
+        PolicyDocument:
+         Version: '2012-10-17'
+         Statement:
+           - Effect: Allow
+             Action:
+             - ssm:GetParameter
+             Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db/*
+
+     - PolicyName: PublishEvents
+        PolicyDocument:
+         Version: '2012-10-17'
+         Statement:
+         - Effect: Allow
+           Action:
+            - events:PutEvents
+           Resource: !GetAtt CloudMartEventBus.Arn
+
+
+  # ==========================================================
+  # LAMBDA IAM ROLE - CHECK STOCK
+  # ==========================================================
+
+  CheckStockLambdaRole:
+    Type: AWS::IAM::Role
+
+    Properties:
+      RoleName: !Sub cloudmart-${Environment}-check-stock-lambda-role
+
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies: 
+     
+
+       - PolicyName: PublishEvents
+          PolicyDocument:
+           Version: '2012-10-17'
+           Statement:
+           - Effect: Allow
+           Action:
+            - events:PutEvents
+           Resource: !GetAtt CloudMartEventBus.Arn
+
+
+  # ==========================================================
+  # LAMBDA IAM ROLE - REPORT
+  # ==========================================================
+
+  ReportLambdaRole:
+    Type: AWS::IAM::Role
+
+    Properties:
+      RoleName: !Sub cloudmart-${Environment}-report-lambda-role
+
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+
+  # ==========================================================
+  # ORDER LAMBDA
+  # ==========================================================
+
+  OrderLambda:
+    Type: AWS::Lambda::Function
+
+    Properties:
+
+      FunctionName: !Sub cloudmart-${Environment}-order-lambda
+
+      Runtime: python3.12
+
+      Handler: lambda_function.lambda_handler
+
+      Role: !GetAtt OrderLambdaRole.Arn
+
+      Timeout: 30
+
+      MemorySize: 256
+
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: lambda/order.zip
+
+      Environment:
+        Variables:
+          DB_HOST:
+            Fn::ImportValue: !Sub cloudmart-${Environment}-rds-endpoint
+          DB_PORT:
+            Fn::ImportValue: !Sub cloudmart-${Environment}-rds-port
+
+
+  # ==========================================================
+  # PRODUCT LAMBDA
+  # ==========================================================
+
+  ProductLambda:
+    Type: AWS::Lambda::Function
+
+    Properties:
+
+      FunctionName: !Sub cloudmart-${Environment}-product-lambda
+
+      Runtime: python3.12
+
+      Handler: lambda_function.lambda_handler
+
+      Role: !GetAtt ProductLambdaRole.Arn
+
+      Timeout: 30
+
+      MemorySize: 256
+
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: lambda/product.zip
+
+      Environment:
+        Variables:
+          DB_HOST:
+            Fn::ImportValue: !Sub cloudmart-${Environment}-rds-endpoint
+          DB_PORT:
+            Fn::ImportValue: !Sub cloudmart-${Environment}-rds-port
+
+
+  # ==========================================================
+  # CHECK STOCK LAMBDA
+  # ==========================================================
+
+  CheckStockLambda:
+    Type: AWS::Lambda::Function
+
+    Properties:
+
+      FunctionName: !Sub cloudmart-${Environment}-check-stock-lambda
+
+      Runtime: python3.12
+
+      Handler: lambda_function.lambda_handler
+
+      Role: !GetAtt CheckStockLambdaRole.Arn
+
+      Timeout: 30
+
+      MemorySize: 256
+
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: lambda/check-stock.zip
+
+      Environment:
+        Variables:
+          DB_HOST:
+            Fn::ImportValue: !Sub cloudmart-${Environment}-rds-endpoint
+          DB_PORT:
+            Fn::ImportValue: !Sub cloudmart-${Environment}-rds-port
+
+
+  # ==========================================================
+  # REPORT LAMBDA
+  # ==========================================================
+
+  ReportLambda:
+    Type: AWS::Lambda::Function
+
+    Properties:
+
+      FunctionName: !Sub cloudmart-${Environment}-report-lambda
+
+      Runtime: python3.12
+
+      Handler: lambda_function.lambda_handler
+
+      Role: !GetAtt ReportLambdaRole.Arn
+
+      Timeout: 30
+
+      MemorySize: 256
+
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: lambda/report.zip
+
+      Environment:
+        Variables:
+          DB_HOST:
+            Fn::ImportValue: !Sub cloudmart-${Environment}-rds-endpoint
+          DB_PORT:
+            Fn::ImportValue: !Sub cloudmart-${Environment}-rds-port
+
+
+  # ==========================================================
+  # LAMBDA AUTHORIZER
+  # ==========================================================
+
+  LambdaAuthorizerRole:
+    Type: AWS::IAM::Role
+
+    Properties:
+
+      RoleName: !Sub cloudmart-${Environment}-authorizer-role
+
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ReadAuthenticationToken
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/auth-token
+
+
+  LambdaAuthorizer:
+    Type: AWS::Lambda::Function
+
+    Properties:
+
+      FunctionName: !Sub cloudmart-${Environment}-authorizer
+
+      Runtime: python3.12
+
+      Handler: lambda_function.lambda_handler
+
+      Role: !GetAtt LambdaAuthorizerRole.Arn
+
+      Timeout: 10
+
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: lambda/authorizer.zip
+
+
+  # ==========================================================
+  # API GATEWAY
+  # ==========================================================
+
+  CloudMartApi:
+    Type: AWS::ApiGateway::RestApi
+
+    Properties:
+
+      Name: !Sub cloudmart-${Environment}-api
+
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+
+  # ==========================================================
+  # API GATEWAY ROOT RESOURCES
+  # ==========================================================
+
+  OrdersResource:
+    Type: AWS::ApiGateway::Resource
+
+    Properties:
+      RestApiId: !Ref CloudMartApi
+      ParentId: !GetAtt CloudMartApi.RootResourceId
+      PathPart: orders
+
+
+  ProductsResource:
+    Type: AWS::ApiGateway::Resource
+
+    Properties:
+      RestApiId: !Ref CloudMartApi
+      ParentId: !GetAtt CloudMartApi.RootResourceId
+      PathPart: products
+
+
+  StockResource:
+    Type: AWS::ApiGateway::Resource
+
+    Properties:
+      RestApiId: !Ref CloudMartApi
+      ParentId: !GetAtt CloudMartApi.RootResourceId
+      PathPart: stock
+
+
+  ReportsResource:
+    Type: AWS::ApiGateway::Resource
+
+    Properties:
+      RestApiId: !Ref CloudMartApi
+      ParentId: !GetAtt CloudMartApi.RootResourceId
+      PathPart: reports
+
+
+  # ==========================================================
+  # SNS TOPIC
+  # ==========================================================
+
+  CloudMartSNSTopic:
+    Type: AWS::SNS::Topic
+
+    Properties:
+
+      TopicName: !Sub cloudmart-${Environment}-notifications
+
+      Tags:
+        - Key: Name
+          Value: !Sub cloudmart-${Environment}-notifications
+
+
+  # ==========================================================
+  # SNS SUBSCRIPTION
+  # ==========================================================
+
+  CloudMartSNSSubscription:
+    Type: AWS::SNS::Subscription
+
+    Properties:
+
+      TopicArn: !Ref CloudMartSNSTopic
+
+      Protocol: email
+
+      Endpoint: your-email@example.com
+
+
+  # ==========================================================
+  # EVENTBRIDGE RULE - ORDER EVENTS
+  # ==========================================================
+
+  OrderEventRule:
+    Type: AWS::Events::Rule
+
+    Properties:
+
+      Name: !Sub cloudmart-${Environment}-order-events
+
+      EventPattern:
+        source:
+          - cloudmart
+        detail-type:
+          - OrderEvent
+
+      State: ENABLED
+
+      Targets:
+        - Arn: !GetAtt OrderLambda.Arn
+          Id: OrderLambdaTarget
+
+
+  # ==========================================================
+  # LAMBDA PERMISSION FOR EVENTBRIDGE
+  # ==========================================================
+
+  OrderLambdaEventBridgePermission:
+    Type: AWS::Lambda::Permission
+
+    Properties:
+
+      FunctionName: !Ref OrderLambda
+
+      Action: lambda:InvokeFunction
+
+      Principal: events.amazonaws.com
+
+      SourceArn: !GetAtt OrderEventRule.Arn
+
+
+  # ==========================================================
+  # S3 APPLICATION BUCKET
+  # ==========================================================
+
+  ApplicationS3Bucket:
+    Type: AWS::S3::Bucket
+
+    Properties:
+
+      BucketName: !Sub cloudmart-${Environment}-application-${AWS::AccountId}
+
+      VersioningConfiguration:
+        Status: Enabled
+
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+      Tags:
+        - Key: Name
+          Value: !Sub cloudmart-${Environment}-application-bucket
+
+
+# ============================================================
+# OUTPUTS
+# ============================================================
+
+Outputs:
+
+  EC2InstanceId:
+    Description: Application EC2 Instance ID
+    Value: !Ref ApplicationEC2
+
+  EC2PublicIp:
+    Description: Application EC2 Public IP
+    Value: !GetAtt ApplicationEC2.PublicIp
+
+  EC2Role:
+    Description: EC2 IAM Role
+    Value: !Ref ApplicationEC2Role
+
+  ApiGatewayId:
+    Description: API Gateway ID
+    Value: !Ref CloudMartApi
+
+  ApiGatewayUrl:
+    Description: API Gateway URL
+    Value: !Sub https://${CloudMartApi}.execute-api.${AWS::Region}.amazonaws.com
+
+  SNSTopicArn:
+    Description: SNS Topic ARN
+    Value: !Ref CloudMartSNSTopic
+
+  ApplicationBucketName:
+    Description: Application S3 Bucket
+    Value: !Ref ApplicationS3Bucket
