@@ -333,7 +333,7 @@ Resources:
 
       Code:
         S3Bucket: !Ref LambdaCodeBucket
-        S3Key: lambdas/product-v2.zip
+        S3Key: lambdas/product-v3.zip
 
   # ==========================================================
   # CHECK STOCK LAMBDA
