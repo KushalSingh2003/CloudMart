@@ -90,9 +90,9 @@ Resources:
       - DeviceIndex: '0'
         AssociatePublicIpAddress: true
         SubnetId:
-          Fn::ImportValue: !Sub cloudmart-${Environment}-public-subnet-id
+          Fn::ImportValue: !Sub cloudmart-${Environment}-PublicSubnetId
         GroupSet:
-        - Fn::ImportValue: !Sub cloudmart-${Environment}-ec2-sg-id
+        - Fn::ImportValue: !Sub cloudmart-${Environment}-EC2SecurityGroupId
 
       IamInstanceProfile: !Ref ApplicationEC2InstanceProfile
 
