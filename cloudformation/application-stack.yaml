@@ -555,6 +555,23 @@ Resources:
         Uri: !Sub
           - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ProductLambdaArn}/invocations
           - ProductLambdaArn: !GetAtt ProductLambda.Arn
+  ProductsPostMethod:
+    Type: AWS::ApiGateway::Method
+
+    Properties:
+      RestApiId: !Ref CloudMartApi
+      ResourceId: !Ref ProductsResource
+      HttpMethod: POST
+
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref CloudMartAuthorizer
+
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ProductLambdaArn}/invocations
+          - ProductLambdaArn: !GetAtt ProductLambda.Arn
 
   ProductLambdaPermission:
     Type: AWS::Lambda::Permission
@@ -562,7 +579,7 @@ Resources:
       FunctionName: !Ref ProductLambda
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${CloudMartApi}/*/GET/products
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${CloudMartApi}/*/*/products
 
   StockResource:
     Type: AWS::ApiGateway::Resource
