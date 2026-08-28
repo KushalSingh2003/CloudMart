@@ -1,4 +1,3 @@
-[ { "ParameterKey": "Environment", "ParameterValue": "dev" }, { "ParameterKey": "LambdaCodeBucket", "ParameterValue": "kushal-lambda-codefiles-bucket" }, { "ParameterKey": "GitHubRunId", "ParameterValue": "9992233" } ]
 [
   {
     "ParameterKey": "Environment",
@@ -7,9 +6,5 @@
   {
     "ParameterKey": "LambdaCodeBucket",
     "ParameterValue": "kushal-lambda-codefiles-bucket"
-  },
-  {
-    "ParameterKey": "GitHubRunId",
-    "ParameterValue": "9992233"
   }
 ]
