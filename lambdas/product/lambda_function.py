@@ -15,7 +15,8 @@ DB_USER = os.environ["DB_USER"]
 DB_PASSWORD_PARAMETER = os.environ["DB_PASSWORD_PARAMETER"]
 
 
-
+# add a new comment
+# added antoher comment
 
 # ------------------------------------------------------------
 # AWS clients
