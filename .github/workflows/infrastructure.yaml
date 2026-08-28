@@ -32,117 +32,117 @@ jobs:
   #     environment: dev
   #   secrets: inherit
 
-  data:
-    name: Deploy Data Stack
-
-    uses: ./.github/workflows/deploy-stack.yaml
-    with:
-      stack_name: data-stack-CloudMart
-      template_file: cloudformation/data-stack.yaml
-      parameters_file: cloudformation/config/data-parameters.json
-      tags_file: cloudformation/config/tags.json
-      environment: dev
-    secrets: inherit
-  # package-lambdas:
-  #   name: Package Lambda Functions sixth  attempt
-
-  #   runs-on: ubuntu-latest
-
-  #   steps:
-  #   - name: Checkout source code
-  #     uses: actions/checkout@v4
-
-  #   - name: Configure AWS credentials via OIDC
-  #     uses: aws-actions/configure-aws-credentials@v4
-  #     with:
-  #       role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-  #       aws-region: ${{ vars.AWS_REGION }}
-
-  #   - name: Set up Python
-  #     uses: actions/setup-python@v5
-  #     with:
-  #       python-version: '3.12'
-
-  #   - name: Package Order Lambda
-  #     run: |
-  #       mkdir -p build/order
-
-  #       pip install \
-  #         -r lambdas/order/requirements.txt \
-  #         -t build/order
-
-  #       cp lambdas/order/lambda_function.py build/order/
-
-  #       cd build/order
-  #       zip -r ../../order.zip .
-
-  #   - name: Package Product Lambda
-  #     run: |
-  #       mkdir -p build/product
-
-  #       pip install \
-  #         -r lambdas/product/requirements.txt \
-  #         -t build/product
-
-  #       cp lambdas/product/lambda_function.py build/product/
-
-  #       cd build/product
-  #       zip -r ../../product.zip .
-
-  #   - name: Package Report Lambda
-  #     run: |
-  #       mkdir -p build/report
-
-  #       pip install \
-  #         -r lambdas/report/requirements.txt \
-  #         -t build/report
-
-  #       cp lambdas/report/lambda_function.py build/report/
-
-  #       cd build/report
-  #       zip -r ../../report.zip .
-  #   - name: Package stock Lambda
-  #     run: |
-  #       mkdir -p build/stock_change
-
-  #       pip install \
-  #         -r lambdas/stock_change/requirements.txt \
-  #         -t build/stock
-
-  #       cp lambdas/stock_change/lambda_function.py build/stock/
-
-  #       cd build/stock
-  #       zip -r ../../stock_change.zip .
-  #   - name: Package auth Lambda
-  #     run: |
-  #       mkdir -p build/authorizer
-
-  #       pip install \
-  #         -r lambdas/authorizer/requirements.txt \
-  #         -t build/authorizer
-
-  #       cp lambdas/authorizer/lambda_function.py build/authorizer/
-
-  #       cd build/authorizer
-  #       zip -r ../../authorizer.zip .
-
-  #   - name: Upload Lambda packages to S3
-  #     run: |
-  #       aws s3 cp order.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/order.zip
-  #       aws s3 cp product.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/product-v3.zip
-  #       aws s3 cp report.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/report.zip
-  #       aws s3 cp stock_change.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/stock_change.zip
-  #       aws s3 cp authorizer.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/authorizer.zip/
-  # application:
-  #   name: Deploy Application Stack
-  #   needs: package-lambdas
+  # data:
+  #   name: Deploy Data Stack
 
   #   uses: ./.github/workflows/deploy-stack.yaml
   #   with:
-  #     stack_name: application-stack-CloudMart
-  #     template_file: cloudformation/application-stack.yaml
-  #     parameters_file: cloudformation/config/application-parameters.json
+  #     stack_name: data-stack-CloudMart
+  #     template_file: cloudformation/data-stack.yaml
+  #     parameters_file: cloudformation/config/data-parameters.json
   #     tags_file: cloudformation/config/tags.json
   #     environment: dev
-
   #   secrets: inherit
+  package-lambdas:
+    name: Package Lambda Functions sixth  attempt
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout source code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+        aws-region: ${{ vars.AWS_REGION }}
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Package Order Lambda
+      run: |
+        mkdir -p build/order
+
+        pip install \
+          -r lambdas/order/requirements.txt \
+          -t build/order
+
+        cp lambdas/order/lambda_function.py build/order/
+
+        cd build/order
+        zip -r ../../order.zip .
+
+    - name: Package Product Lambda
+      run: |
+        mkdir -p build/product
+
+        pip install \
+          -r lambdas/product/requirements.txt \
+          -t build/product
+
+        cp lambdas/product/lambda_function.py build/product/
+
+        cd build/product
+        zip -r ../../product.zip .
+
+    - name: Package Report Lambda
+      run: |
+        mkdir -p build/report
+
+        pip install \
+          -r lambdas/report/requirements.txt \
+          -t build/report
+
+        cp lambdas/report/lambda_function.py build/report/
+
+        cd build/report
+        zip -r ../../report.zip .
+    - name: Package stock Lambda
+      run: |
+        mkdir -p build/stock_change
+
+        pip install \
+          -r lambdas/stock_change/requirements.txt \
+          -t build/stock
+
+        cp lambdas/stock_change/lambda_function.py build/stock/
+
+        cd build/stock
+        zip -r ../../stock_change.zip .
+    - name: Package auth Lambda
+      run: |
+        mkdir -p build/authorizer
+
+        pip install \
+          -r lambdas/authorizer/requirements.txt \
+          -t build/authorizer
+
+        cp lambdas/authorizer/lambda_function.py build/authorizer/
+
+        cd build/authorizer
+        zip -r ../../authorizer.zip .
+
+    - name: Upload Lambda packages to S3
+      run: |
+        aws s3 cp order.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/order.zip
+        aws s3 cp product.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/product-v3.zip
+        aws s3 cp report.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/report.zip
+        aws s3 cp stock_change.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/stock_change.zip
+        aws s3 cp authorizer.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/authorizer.zip/
+  application:
+    name: Deploy Application Stack
+    needs: package-lambdas
+
+    uses: ./.github/workflows/deploy-stack.yaml
+    with:
+      stack_name: application-stack-CloudMart
+      template_file: cloudformation/application-stack.yaml
+      parameters_file: cloudformation/config/application-parameters.json
+      tags_file: cloudformation/config/tags.json
+      environment: dev
+
+    secrets: inherit
