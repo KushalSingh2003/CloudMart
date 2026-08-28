@@ -92,6 +92,13 @@ Resources:
 
       - Key: Environment
         Value: !Ref Environment
+  DBPasswordParameter:
+    Type: AWS::SSM::Parameter
+
+    Properties:
+      Name: !Sub /cloudmart/${Environment}/db-password
+      Type: SecureString
+      Value: !Ref MasterUserPassword
 
   # ==========================================================================
   # RDS MYSQL DATABASE

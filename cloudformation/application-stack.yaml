@@ -21,6 +21,7 @@ Parameters:
   AuthToken:
     Type: String
     NoEcho: true
+
 # ============================================================
 # RESOURCES
 # ============================================================
@@ -334,6 +335,38 @@ Resources:
       Code:
         S3Bucket: !Ref LambdaCodeBucket
         S3Key: lambdas/product-v3.zip
+
+      VpcConfig:
+        SubnetIds:
+        - Fn::ImportValue:
+            Fn::Sub: cloudmart-${Environment}-PrivateSubnetAId
+        - Fn::ImportValue:
+            Fn::Sub: cloudmart-${Environment}-PrivateSubnetBId
+
+        SecurityGroupIds:
+        - Fn::ImportValue:
+            Fn::Sub: cloudmart-${Environment}-LambdaSecurityGroupId
+
+      Environment:
+        Variables:
+
+          DB_HOST:
+            Fn::ImportValue:
+              Fn::Sub: cloudmart-${Environment}-rds-endpoint
+
+          DB_PORT:
+            Fn::ImportValue:
+              Fn::Sub: cloudmart-${Environment}-rds-port
+
+          DB_NAME:
+            Fn::ImportValue:
+              Fn::Sub: cloudmart-${Environment}-database-name
+
+          DB_USER:
+            Fn::ImportValue:
+              Fn::Sub: cloudmart-${Environment}-db-master-username
+
+          DB_PASSWORD_PARAMETER: !Sub /cloudmart/${Environment}/db-password
 
   # ==========================================================
   # CHECK STOCK LAMBDA
