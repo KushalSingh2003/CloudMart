@@ -42,7 +42,7 @@ def get_db_password():
 # ------------------------------------------------------------
 # Connect to RDS
 # ------------------------------------------------------------
-
+#checking the connection to the database using pymysql and returning the connection object.
 def get_connection():
 
     password = get_db_password()
