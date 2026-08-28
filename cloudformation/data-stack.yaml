@@ -228,9 +228,3 @@ Outputs:
     Value: !Ref CloudMartDBSubnetGroup
     Export:
       Name: !Sub cloudmart-${Environment}-db-subnet-group
-
-  RDSSecurityGroupId:
-    Description: Security group attached to the RDS instance.
-    Value:
-      Fn::ImportValue:
-        Fn::Sub: cloudmart-${Environment}-RDSSecurityGroupId
