@@ -322,7 +322,7 @@ Resources:
 
     Properties:
       FunctionName: !Sub cloudmart-${Environment}-product-lambda
-      Description: New description for the Product Lambda function
+      Description: CloudMart Product Lambda - soft delete migration again
 
       Runtime: python3.12
 
