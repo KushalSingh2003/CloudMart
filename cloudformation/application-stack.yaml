@@ -322,6 +322,7 @@ Resources:
 
     Properties:
       FunctionName: !Sub cloudmart-${Environment}-product-lambda
+      Description: CloudMart Product Lambda - updated
 
       Runtime: python3.12
 
