@@ -14,7 +14,7 @@ DB_NAME = os.environ["DB_NAME"]
 DB_USER = os.environ["DB_USER"]
 DB_PASSWORD_PARAMETER = os.environ["DB_PASSWORD_PARAMETER"]
 
-EVENT_BUS_NAME = os.environ.get("EVENT_BUS_NAME")
+
 
 
 # ------------------------------------------------------------
@@ -22,7 +22,7 @@ EVENT_BUS_NAME = os.environ.get("EVENT_BUS_NAME")
 # ------------------------------------------------------------
 
 ssm = boto3.client("ssm")
-events = boto3.client("events")
+
 
 
 # ------------------------------------------------------------
@@ -193,13 +193,7 @@ def lambda_handler(event, context):
 
                 new_product_id = cursor.lastrowid
 
-            publish_event(
-                "ProductCreated",
-                {
-                    "ProductID": new_product_id,
-                    "Name": name
-                }
-            )
+          
 
             return response(
                 201,
@@ -251,17 +245,7 @@ def lambda_handler(event, context):
                         {"message": "Product not found"}
                     )
 
-            publish_event(
-                "ProductUpdated",
-                {
-                    "ProductID": product_id
-                }
-            )
-
-            return response(
-                200,
-                {"message": "Product updated"}
-            )
+          
 
         # ----------------------------------------------------
         # DELETE /products/{productId}
@@ -286,13 +270,7 @@ def lambda_handler(event, context):
                         {"message": "Product not found"}
                     )
 
-            publish_event(
-                "ProductDeleted",
-                {
-                    "ProductID": product_id
-                }
-            )
-
+            
             return response(
                 200,
                 {"message": "Product deleted"}
