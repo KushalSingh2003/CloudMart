@@ -21,7 +21,7 @@ Parameters:
   AuthToken:
     Type: String
     NoEcho: true
-  GitHubRunId:
+  GITHUB_RUN_ID:
     Type: String
 # ============================================================
 # RESOURCES
