@@ -21,8 +21,9 @@ Parameters:
   AuthToken:
     Type: String
     NoEcho: true
-  GITHUB_RUN_ID:
+  GitHubRunId:
     Type: String
+    Description: GitHub Actions run ID for versioned Lambda artifact deployment
 # ============================================================
 # RESOURCES
 # ============================================================
@@ -337,7 +338,7 @@ Resources:
 
       Code:
         S3Bucket: !Ref LambdaCodeBucket
-        S3Key: !Sub lambdas/product-${GITHUB_RUN_ID}.zip
+        S3Key: !Sub lambdas/product-${GitHubRunId}.zip
 
       VpcConfig:
         SubnetIds:
