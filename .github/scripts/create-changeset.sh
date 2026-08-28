@@ -457,14 +457,21 @@ if [ "${STACK_NAME}" = "application-stack-CloudMart" ]; then
     echo "Application stack detected."
     echo "Adding AuthToken parameter."
 
-    jq --arg token "$AUTH_TOKEN" \
-       --arg run_id "$GITHUB_RUN_ID" \
-       'map(select(.ParameterKey != "AuthToken" and .ParameterKey != "GitHubRunId"))
-        + [
-            {"ParameterKey":"AuthToken","ParameterValue":$token},
-            {"ParameterKey":"GitHubRunId","ParameterValue":$run_id}
-          ]' \
-       "$PARAMETERS_FILE" > "$PARAMETERS_WITH_AUTH"
+    jq \
+  --arg token "$AUTH_TOKEN" \
+  --arg run_id "$GITHUB_RUN_ID" \
+  'map(select(.ParameterKey != "AuthToken" and .ParameterKey != "GitHubRunId"))
+   + [
+       {
+         "ParameterKey": "AuthToken",
+         "ParameterValue": $token
+       },
+       {
+         "ParameterKey": "GitHubRunId",
+         "ParameterValue": $run_id
+       }
+     ]' \
+  "$PARAMETERS_FILE" > "$PARAMETERS_WITH_AUTH"
 
 else
 
