@@ -97,7 +97,7 @@ Resources:
 
     Properties:
       Name: !Sub /cloudmart/${Environment}/db-password
-      Type: SecureString
+      Type: String
       Value: !Ref MasterUserPassword
 
   # ==========================================================================
