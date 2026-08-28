@@ -21,7 +21,8 @@ Parameters:
   AuthToken:
     Type: String
     NoEcho: true
-
+  GitHubRunId:
+    Type: String
 # ============================================================
 # RESOURCES
 # ============================================================
@@ -336,7 +337,7 @@ Resources:
 
       Code:
         S3Bucket: !Ref LambdaCodeBucket
-        S3Key: lambdas/product-v3.zip
+        S3Key: !Sub lambdas/product-${GITHUB_RUN_ID}.zip
 
       VpcConfig:
         SubnetIds:
