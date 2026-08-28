@@ -208,6 +208,8 @@ Outputs:
   DatabaseName:
     Description: CloudMart database name.
     Value: !Ref DatabaseName
+    Export:
+      Name: !Sub cloudmart-${Environment}-database-name
 
   DBSubnetGroupName:
     Description: CloudMart RDS DB subnet group.
