@@ -286,6 +286,68 @@ Resources:
       Tags:
       - Key: Name
         Value: !Sub cloudmart-${Environment}-report-lambda-role
+  DBInitLambdaRole:
+    Type: AWS::IAM::Role
+
+    Properties:
+      RoleName: !Sub cloudmart-${Environment}-db-init-role
+
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+    Policies:
+    - PolicyName: ReadDBCredentialsFromSSM
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - ssm:GetParameter
+          Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db-credentials
+  DBInitLambda:
+    Type: AWS::Lambda::Function
+
+    Properties:
+      FunctionName: !Sub cloudmart-${Environment}-db-init
+
+      Runtime: python3.12
+
+      Handler: lambda_function.lambda_handler
+
+      Role: !GetAtt DBInitLambdaRole.Arn
+
+      Timeout: 60
+
+      MemorySize: 256
+
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: lambdas/db_init.zip
+
+      VpcConfig:
+        SubnetIds:
+        - !Ref PrivateSubnetA
+        - !Ref PrivateSubnetB
+
+        SecurityGroupIds:
+        - !Ref LambdaSecurityGroup
+      Environment:
+        Variables:
+          DB_HOST: !GetAtt CloudMartDatabase.Endpoint.Address
+          DB_PORT: "3306"
+          DB_NAME: !Ref DatabaseName
+          DB_USER: !Ref MasterUsername
+          DB_PASSWORD_PARAMETER: !Sub /cloudmart/${Environment}/db-password
 
   # ==========================================================
   # ORDER LAMBDA
