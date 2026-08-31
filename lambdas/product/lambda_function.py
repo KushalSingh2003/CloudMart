@@ -451,6 +451,10 @@ def create_products_table(connection):
 # ------------------------------------------------------------
 
 def lambda_handler(event, context):
+    print("EVENT:", json.dumps(event))
+    print("HTTP METHOD:", event.get("httpMethod"))
+    print("PATH PARAMETERS:", event.get("pathParameters"))
+    print("BODY:", event.get("body"))
 
     connection = None
 

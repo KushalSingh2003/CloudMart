@@ -622,7 +622,7 @@ Resources:
       FunctionName: !Ref ProductLambda
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${CloudMartApi}/*/*/products
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${CloudMartApi}/*/*/products*
 
   StockResource:
     Type: AWS::ApiGateway::Resource
