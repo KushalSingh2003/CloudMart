@@ -432,7 +432,7 @@ def initialize_database(connection):
 
         raise
 
-
+# Added a comment to indicate that the following section is the Lambda handler function, which serves as the entry point for the AWS Lambda function. It processes incoming events, connects to the database, and handles various HTTP methods for product management.  
 # ------------------------------------------------------------
 # Lambda handler
 # ------------------------------------------------------------
