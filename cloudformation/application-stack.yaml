@@ -315,7 +315,7 @@ Resources:
 
       Code:
         S3Bucket: !Ref LambdaCodeBucket
-        S3Key: !Sub order-lambda/order-${GitHubRunId}.zip
+        S3Key: !Sub lambdas/order-${GitHubRunId}.zip
       VpcConfig:
         SubnetIds:
         - Fn::ImportValue:
