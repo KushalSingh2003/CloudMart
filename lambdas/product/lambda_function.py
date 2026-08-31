@@ -319,6 +319,7 @@
 #         },
 #         "body": json.dumps(body, default=str)
 #     }
+# 
 import os
 import json
 import boto3
@@ -342,11 +343,12 @@ DB_PASSWORD_PARAMETER = os.environ["DB_PASSWORD_PARAMETER"]
 
 ssm = boto3.client("ssm")
 events = boto3.client("events")
+
 LOW_STOCK_THRESHOLD = 5
 
 
 # ------------------------------------------------------------
-# Get DB password from SSM
+# Get DB password from SSM Parameter Store
 # ------------------------------------------------------------
 
 def get_db_password():
@@ -360,7 +362,7 @@ def get_db_password():
 
 
 # ------------------------------------------------------------
-# Connect to RDS
+# Connect to RDS MySQL
 # ------------------------------------------------------------
 
 def get_connection():
@@ -379,7 +381,7 @@ def get_connection():
 
 
 # ------------------------------------------------------------
-# Create Products table / migrate existing table
+# Initialize database using schema.sql
 # ------------------------------------------------------------
 
 def initialize_database(connection):
@@ -432,12 +434,13 @@ def initialize_database(connection):
 
         raise
 
-# Added a comment to indicate that the following section is the Lambda handler function, which serves as the entry point for the AWS Lambda function. It processes incoming events, connects to the database, and handles various HTTP methods for product management.  
+
 # ------------------------------------------------------------
 # Lambda handler
 # ------------------------------------------------------------
 
 def lambda_handler(event, context):
+
     print("EVENT:", json.dumps(event))
     print("HTTP METHOD:", event.get("httpMethod"))
     print("PATH PARAMETERS:", event.get("pathParameters"))
@@ -451,14 +454,17 @@ def lambda_handler(event, context):
         # Connect to database
         # ----------------------------------------------------
 
-       
-
-
-        # ----------------------------------------------------
-        # Create / migrate Products table
-        # ----------------------------------------------------
-
         connection = get_connection()
+
+        print(json.dumps({
+            "level": "INFO",
+            "message": "Successfully connected to RDS"
+        }))
+
+
+        # ----------------------------------------------------
+        # Create / initialize database tables
+        # ----------------------------------------------------
 
         initialize_database(connection)
 
@@ -490,11 +496,11 @@ def lambda_handler(event, context):
             body = json.loads(body)
 
 
-        # ----------------------------------------------------
+        # ====================================================
         # GET /products
         #
         # Return only ACTIVE products
-        # ----------------------------------------------------
+        # ====================================================
 
         if http_method == "GET" and not product_id:
 
@@ -503,20 +509,19 @@ def lambda_handler(event, context):
                 cursor.execute(
                     """
                     SELECT
-                        ProductID,
-                        Name,
-                        Description,
-                        Price,
-                        Stock,
-                        CategoryID,
-                        Status
+                        product_id AS ProductID,
+                        name AS Name,
+                        description AS Description,
+                        price AS Price,
+                        stock AS Stock,
+                        category_id AS CategoryID,
+                        status AS Status
                     FROM Products
-                    WHERE Status = 'ACTIVE'
+                    WHERE status = 'ACTIVE'
                     """
                 )
 
                 products = cursor.fetchall()
-
 
             return response(
                 200,
@@ -524,11 +529,11 @@ def lambda_handler(event, context):
             )
 
 
-        # ----------------------------------------------------
+        # ====================================================
         # GET /products/{productId}
         #
         # Return product only if it is ACTIVE
-        # ----------------------------------------------------
+        # ====================================================
 
         if http_method == "GET" and product_id:
 
@@ -537,16 +542,16 @@ def lambda_handler(event, context):
                 cursor.execute(
                     """
                     SELECT
-                        ProductID,
-                        Name,
-                        Description,
-                        Price,
-                        Stock,
-                        CategoryID,
-                        Status
+                        product_id AS ProductID,
+                        name AS Name,
+                        description AS Description,
+                        price AS Price,
+                        stock AS Stock,
+                        category_id AS CategoryID,
+                        status AS Status
                     FROM Products
-                    WHERE ProductID = %s
-                    AND Status = 'ACTIVE'
+                    WHERE product_id = %s
+                    AND status = 'ACTIVE'
                     """,
                     (product_id,)
                 )
@@ -570,9 +575,9 @@ def lambda_handler(event, context):
             )
 
 
-        # ----------------------------------------------------
+        # ====================================================
         # POST /products
-        # ----------------------------------------------------
+        # ====================================================
 
         if http_method == "POST":
 
@@ -586,6 +591,7 @@ def lambda_handler(event, context):
                 )
 
 
+            # API request fields remain PascalCase
             name = body["Name"]
 
             description = body.get("Description")
@@ -603,12 +609,12 @@ def lambda_handler(event, context):
                     """
                     INSERT INTO Products
                     (
-                        Name,
-                        Description,
-                        Price,
-                        Stock,
-                        CategoryID,
-                        Status
+                        name,
+                        description,
+                        price,
+                        stock,
+                        category_id,
+                        status
                     )
                     VALUES
                     (
@@ -641,11 +647,11 @@ def lambda_handler(event, context):
             )
 
 
-        # ----------------------------------------------------
+        # ====================================================
         # PUT /products/{productId}
         #
         # Only ACTIVE products can be updated
-        # ----------------------------------------------------
+        # ====================================================
 
         if http_method == "PUT" and product_id:
 
@@ -659,6 +665,7 @@ def lambda_handler(event, context):
                 )
 
 
+            # API request fields remain PascalCase
             name = body["Name"]
 
             description = body.get("Description")
@@ -676,13 +683,13 @@ def lambda_handler(event, context):
                     """
                     UPDATE Products
                     SET
-                        Name = %s,
-                        Description = %s,
-                        Price = %s,
-                        Stock = %s,
-                        CategoryID = %s
-                    WHERE ProductID = %s
-                    AND Status = 'ACTIVE'
+                        name = %s,
+                        description = %s,
+                        price = %s,
+                        stock = %s,
+                        category_id = %s
+                    WHERE product_id = %s
+                    AND status = 'ACTIVE'
                     """,
                     (
                         name,
@@ -696,7 +703,6 @@ def lambda_handler(event, context):
 
 
                 if cursor.rowcount == 0:
-                
 
                     return response(
                         404,
@@ -704,10 +710,16 @@ def lambda_handler(event, context):
                             "message": "Product not found"
                         }
                     )
-                if stock < LOW_STOCK_THRESHOLD:
 
-                    events.put_events(
-                        Entries=[
+
+            # ------------------------------------------------
+            # Low stock event
+            # ------------------------------------------------
+
+            if stock < LOW_STOCK_THRESHOLD:
+
+                events.put_events(
+                    Entries=[
                         {
                             "EventBusName": os.environ["EVENT_BUS_NAME"],
                             "Source": "cloudmart.inventory",
@@ -720,7 +732,6 @@ def lambda_handler(event, context):
                         }
                     ]
                 )
-                
 
 
             return response(
@@ -732,14 +743,12 @@ def lambda_handler(event, context):
             )
 
 
-        # ----------------------------------------------------
+        # ====================================================
         # DELETE /products/{productId}
         #
         # Soft delete:
-        # Change Status from ACTIVE to INACTIVE.
-        #
-        # The product remains in the database.
-        # ----------------------------------------------------
+        # ACTIVE -> INACTIVE
+        # ====================================================
 
         if http_method == "DELETE" and product_id:
 
@@ -748,9 +757,9 @@ def lambda_handler(event, context):
                 cursor.execute(
                     """
                     UPDATE Products
-                    SET Status = 'INACTIVE'
-                    WHERE ProductID = %s
-                    AND Status = 'ACTIVE'
+                    SET status = 'INACTIVE'
+                    WHERE product_id = %s
+                    AND status = 'ACTIVE'
                     """,
                     (product_id,)
                 )
@@ -775,9 +784,9 @@ def lambda_handler(event, context):
             )
 
 
-        # ----------------------------------------------------
+        # ====================================================
         # Unsupported operation
-        # ----------------------------------------------------
+        # ====================================================
 
         return response(
             400,
@@ -786,6 +795,10 @@ def lambda_handler(event, context):
             }
         )
 
+
+    # ========================================================
+    # Error handling
+    # ========================================================
 
     except KeyError as e:
 
@@ -818,7 +831,8 @@ def lambda_handler(event, context):
         return response(
             500,
             {
-                "message": "Internal server error"
+                "message": "Internal server error",
+                "error": str(e)
             }
         )
 
