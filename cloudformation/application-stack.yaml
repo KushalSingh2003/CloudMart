@@ -22,8 +22,9 @@ Parameters:
     Type: String
     NoEcho: true
   GitHubRunId:
-    Type: String
     Description: GitHub Actions run ID for versioned Lambda artifact deployment
+    Type: String
+    Default: "0"
 # ============================================================
 # RESOURCES
 # ============================================================
