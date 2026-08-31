@@ -21,37 +21,21 @@ CREATE TABLE IF NOT EXISTS Products (
 
 CREATE TABLE IF NOT EXISTS Orders (
     order_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-
     customer_id BIGINT NOT NULL,
-
     total_amount DECIMAL(10,2) NOT NULL,
-
     status VARCHAR(50) NOT NULL,
-
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
     changed_at TIMESTAMP NULL,
-
     cancelled_at TIMESTAMP NULL,
-
-    cancel_reason VARCHAR(500),
-
-    CONSTRAINT fk_order_customer
-        FOREIGN KEY (customer_id)
-        REFERENCES Customer(customer_id)
+    cancel_reason VARCHAR(500)
 );
 
 CREATE TABLE IF NOT EXISTS Orders_Items (
     order_item_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-
     order_id BIGINT NOT NULL,
-
     product_id BIGINT NOT NULL,
-
     product_name VARCHAR(255) NOT NULL,
-
     quantity INT NOT NULL,
-
     price DECIMAL(10,2) NOT NULL,
 
     CONSTRAINT fk_order_item_order
@@ -65,25 +49,15 @@ CREATE TABLE IF NOT EXISTS Orders_Items (
 
 CREATE TABLE IF NOT EXISTS Orders_History (
     order_history_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-
     order_id BIGINT NOT NULL,
-
     product_id BIGINT,
-
     customer_id BIGINT,
-
     quantity INT,
-
     total_amount DECIMAL(10,2),
-
     status VARCHAR(50),
-
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
     archived_at TIMESTAMP NULL,
-
     cancelled_at TIMESTAMP NULL,
-
     cancelled_reason VARCHAR(500),
 
     CONSTRAINT fk_history_order
