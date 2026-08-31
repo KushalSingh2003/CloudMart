@@ -382,70 +382,55 @@ def get_connection():
 # Create Products table / migrate existing table
 # ------------------------------------------------------------
 
-def create_products_table(connection):
+def initialize_database(connection):
 
-    # Create table if it does not already exist.
-    # Status is included for new tables.
+    print(json.dumps({
+        "level": "INFO",
+        "message": "Starting database initialization"
+    }))
 
-    create_query = """
-    CREATE TABLE IF NOT EXISTS Products (
-        ProductID INT AUTO_INCREMENT PRIMARY KEY,
-        Name VARCHAR(255) NOT NULL,
-        Description TEXT,
-        Price DECIMAL(10,2) NOT NULL,
-        Stock INT NOT NULL DEFAULT 0,
-        CategoryID INT NOT NULL,
-        Status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'
-    )
-    """
+    try:
 
-    with connection.cursor() as cursor:
-        cursor.execute(create_query)
+        with open("/var/task/schema.sql", "r") as file:
+            sql_script = file.read()
 
+        print(json.dumps({
+            "level": "INFO",
+            "message": "schema.sql loaded successfully"
+        }))
 
-    # --------------------------------------------------------
-    # Check whether Status column exists
-    # --------------------------------------------------------
+        statements = sql_script.split(";")
 
-    with connection.cursor() as cursor:
-
-        cursor.execute(
-            """
-            SELECT COUNT(*) AS column_exists
-            FROM INFORMATION_SCHEMA.COLUMNS
-            WHERE TABLE_SCHEMA = %s
-            AND TABLE_NAME = 'Products'
-            AND COLUMN_NAME = 'Status'
-            """,
-            (DB_NAME,)
-        )
-
-        result = cursor.fetchone()
-
-
-    # --------------------------------------------------------
-    # Add Status column to existing Products table
-    # --------------------------------------------------------
-
-    if result["column_exists"] == 0:
-
-        print("Status column not found. Adding Status column...")
+        executed_statements = 0
 
         with connection.cursor() as cursor:
 
-            cursor.execute(
-                """
-                ALTER TABLE Products
-                ADD COLUMN Status VARCHAR(20)
-                NOT NULL DEFAULT 'ACTIVE'
-                """
-            )
+            for statement in statements:
 
-        print("Status column added successfully.")
+                statement = statement.strip()
 
-    else:
+                if not statement:
+                    continue
 
-        print("Status column already exists.")
+                cursor.execute(statement)
+
+                executed_statements += 1
+
+        print(json.dumps({
+            "level": "INFO",
+            "message": "Database initialization completed",
+            "statements_executed": executed_statements
+        }))
+
+    except Exception as e:
+
+        print(json.dumps({
+            "level": "ERROR",
+            "message": "Database initialization failed",
+            "error": str(e)
+        }))
+
+        raise
 
 
 # ------------------------------------------------------------
@@ -466,14 +451,16 @@ def lambda_handler(event, context):
         # Connect to database
         # ----------------------------------------------------
 
-        connection = get_connection()
+       
 
 
         # ----------------------------------------------------
         # Create / migrate Products table
         # ----------------------------------------------------
 
-        create_products_table(connection)
+        connection = get_connection()
+
+        initialize_database(connection)
 
 
         # ----------------------------------------------------

@@ -85,6 +85,7 @@ jobs:
           -t build/product
 
         cp lambdas/product/lambda_function.py build/product/
+        cp lambdas/product/schema.sql build/product/
 
         cd build/product
         zip -r ../../product.zip .
