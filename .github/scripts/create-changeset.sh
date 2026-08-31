@@ -1,474 +1,176 @@
-- name: Create Change Set
-  id: create-changeset
-  env:
-    STACK_NAME: ${{ inputs.stack_name }}
-    PARAMETERS_FILE: ${{ inputs.parameters_file }}
-    TAGS_FILE: ${{ inputs.tags_file }}
-    TEMPLATE_S3_URL: ${{ steps.upload.outputs.template_s3_url }}
-    AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
-  run: |
-    #!/bin/bash
+#!/bin/bash
+set -e
 
-    set -e
+echo "=========================================="
+echo "Creating CloudFormation Change Set"
+echo "Creating CloudFormation Change Set for running the jobs again"
+echo "=========================================="
+CHANGESET_NAME="changeset-${STACK_NAME}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+echo "Change Set Name: ${CHANGESET_NAME}"
 
-    echo "=========================================="
-    echo "Creating CloudFormation Change Set"
-    echo "=========================================="
+# --------------------------------------------------
+# 1. Determine whether stack already exists
+# --------------------------------------------------
 
-    CHANGESET_NAME="changeset-${STACK_NAME}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+if aws cloudformation describe-stacks \
+    --stack-name "${STACK_NAME}" >/dev/null 2>&1; then
 
-    echo "Stack Name: ${STACK_NAME}"
-    echo "Change Set Name: ${CHANGESET_NAME}"
-    echo "GitHub Run ID: ${GITHUB_RUN_ID}"
-    echo "GitHub Run Attempt: ${GITHUB_RUN_ATTEMPT}"
+    CHANGESET_TYPE="UPDATE"
+    echo "Stack exists — change set type: UPDATE"
 
-    # --------------------------------------------------
-    # 1. Determine whether stack already exists
-    # --------------------------------------------------
+else
 
-    echo ""
-    echo "Checking whether stack exists..."
+    CHANGESET_TYPE="CREATE"
+    echo "Stack does not exist — change set type: CREATE"
 
-    if aws cloudformation describe-stacks \
-        --stack-name "${STACK_NAME}" >/dev/null 2>&1; then
+fi
 
-        CHANGESET_TYPE="UPDATE"
+# --------------------------------------------------
+# 2. Validate template URL
+# --------------------------------------------------
 
-        echo "Stack exists."
-        echo "Change set type: UPDATE"
+echo "Template URL: ${TEMPLATE_S3_URL}"
 
-    else
+if [ -z "${TEMPLATE_S3_URL}" ]; then
+    echo "ERROR: TEMPLATE_S3_URL is empty."
+    exit 1
+fi
 
-        CHANGESET_TYPE="CREATE"
+# --------------------------------------------------
+# 3. Create Change Set
+# --------------------------------------------------
 
-        echo "Stack does not exist."
-        echo "Change set type: CREATE"
+echo ""
+echo "Creating change set:"
+echo "${CHANGESET_NAME}"
+PARAMETERS_WITH_AUTH=$(mktemp)
 
-    fi
+jq --arg token "$AUTH_TOKEN" \
+  '. + [{"ParameterKey":"AuthToken","ParameterValue":$token}]' \
+  "$PARAMETERS_FILE" > "$PARAMETERS_WITH_AUTH"
 
-    # --------------------------------------------------
-    # 2. Validate template URL
-    # --------------------------------------------------
+aws cloudformation create-change-set \
+    --stack-name "${STACK_NAME}" \
+    --change-set-name "${CHANGESET_NAME}" \
+    --change-set-type "${CHANGESET_TYPE}" \
+    --template-url "${TEMPLATE_S3_URL}" \
+    --parameters "file://${PARAMETERS_WITH_AUTH}" \
+    --tags "file://${TAGS_FILE}" \
+    --capabilities CAPABILITY_NAMED_IAM
 
-    echo ""
-    echo "Validating template URL..."
+# --------------------------------------------------
+# 4. Wait for Change Set to become ready
+# --------------------------------------------------
 
-    echo "Template URL: ${TEMPLATE_S3_URL}"
+echo ""
+echo "Polling change set status..."
+echo "Maximum attempts: 20"
+echo "Interval: 15 seconds"
 
-    if [ -z "${TEMPLATE_S3_URL}" ]; then
-        echo "ERROR: TEMPLATE_S3_URL is empty."
-        exit 1
-    fi
+FINAL_STATUS=""
 
-    # --------------------------------------------------
-    # 3. Check parameters file exists
-    # --------------------------------------------------
+for i in $(seq 1 20); do
 
-    echo ""
-    echo "Checking parameters file..."
-
-    if [ ! -f "${PARAMETERS_FILE}" ]; then
-        echo "ERROR: Parameters file does not exist:"
-        echo "${PARAMETERS_FILE}"
-        exit 1
-    fi
-
-    echo "Parameters file found:"
-    echo "${PARAMETERS_FILE}"
-
-    # --------------------------------------------------
-    # 4. Check tags file exists
-    # --------------------------------------------------
-
-    echo ""
-    echo "Checking tags file..."
-
-    if [ ! -f "${TAGS_FILE}" ]; then
-        echo "ERROR: Tags file does not exist:"
-        echo "${TAGS_FILE}"
-        exit 1
-    fi
-
-    echo "Tags file found:"
-    echo "${TAGS_FILE}"
-
-    # --------------------------------------------------
-    # 5. Validate original parameters JSON
-    # --------------------------------------------------
-
-    echo ""
-    echo "=========================================="
-    echo "Original CloudFormation Parameters"
-    echo "=========================================="
-
-    cat "${PARAMETERS_FILE}"
-
-    echo ""
-    echo "Validating original parameters JSON..."
-
-    if ! jq empty "${PARAMETERS_FILE}"; then
-        echo "ERROR: Original parameters file contains invalid JSON."
-        exit 1
-    fi
-
-    echo "Original parameters JSON is valid."
-
-    # --------------------------------------------------
-    # 6. Prepare CloudFormation parameters
-    # --------------------------------------------------
-
-    echo ""
-    echo "=========================================="
-    echo "Preparing CloudFormation Parameters"
-    echo "=========================================="
-
-    PARAMETERS_WITH_AUTH=$(mktemp)
-
-    if [ "${STACK_NAME}" = "application-stack-CloudMart" ]; then
-
-        echo "Application stack detected."
-
-        echo "Removing any existing:"
-        echo "  - AuthToken"
-        echo "  - GitHubRunId"
-
-        echo "Adding current:"
-        echo "  - AuthToken"
-        echo "  - GitHubRunId"
-
-        jq \
-          --arg token "${AUTH_TOKEN}" \
-          --arg run_id "${GITHUB_RUN_ID}" \
-          'map(
-              select(
-                .ParameterKey != "AuthToken" and
-                .ParameterKey != "GitHubRunId"
-              )
-           )
-           + [
-              {
-                "ParameterKey": "AuthToken",
-                "ParameterValue": $token
-              },
-              {
-                "ParameterKey": "GitHubRunId",
-                "ParameterValue": $run_id
-              }
-           ]' \
-          "${PARAMETERS_FILE}" > "${PARAMETERS_WITH_AUTH}"
-
-    else
-
-        echo "Non-application stack detected."
-
-        echo "Using parameters file without AuthToken."
-
-        cp "${PARAMETERS_FILE}" "${PARAMETERS_WITH_AUTH}"
-
-    fi
-
-    # --------------------------------------------------
-    # 7. Validate generated parameters JSON
-    # --------------------------------------------------
-
-    echo ""
-    echo "=========================================="
-    echo "Validating Generated Parameters"
-    echo "=========================================="
-
-    if ! jq empty "${PARAMETERS_WITH_AUTH}"; then
-
-        echo "ERROR: Generated parameters file contains invalid JSON."
-
-        echo ""
-        echo "Generated file:"
-        cat "${PARAMETERS_WITH_AUTH}"
-
-        exit 1
-
-    fi
-
-    echo "Generated parameters JSON is valid."
-
-    # --------------------------------------------------
-    # 8. Display generated parameters safely
-    # --------------------------------------------------
-
-    echo ""
-    echo "=========================================="
-    echo "Parameters Being Passed to CloudFormation"
-    echo "=========================================="
-
-    jq '
-      map(
-        if .ParameterKey == "AuthToken"
-        then
-          .ParameterValue = "***REDACTED***"
-        else
-          .
-        end
-      )
-    ' "${PARAMETERS_WITH_AUTH}"
-
-    # --------------------------------------------------
-    # 9. Verify GitHubRunId
-    # --------------------------------------------------
-
-    echo ""
-    echo "Checking GitHubRunId parameter..."
-
-    GENERATED_RUN_ID=$(jq -r '
-      .[]
-      | select(.ParameterKey == "GitHubRunId")
-      | .ParameterValue
-    ' "${PARAMETERS_WITH_AUTH}")
-
-    if [ -z "${GENERATED_RUN_ID}" ] || [ "${GENERATED_RUN_ID}" = "null" ]; then
-
-        echo "ERROR: GitHubRunId was not added to the parameters."
-
-        exit 1
-
-    fi
-
-    echo "GitHubRunId: ${GENERATED_RUN_ID}"
-
-    if [ "${GENERATED_RUN_ID}" != "${GITHUB_RUN_ID}" ]; then
-
-        echo "ERROR: GitHubRunId does not match GITHUB_RUN_ID."
-
-        echo "Expected: ${GITHUB_RUN_ID}"
-        echo "Actual:   ${GENERATED_RUN_ID}"
-
-        exit 1
-
-    fi
-
-    echo "GitHubRunId matches GITHUB_RUN_ID."
-
-    # --------------------------------------------------
-    # 10. Create Change Set
-    # --------------------------------------------------
-
-    echo ""
-    echo "=========================================="
-    echo "Creating CloudFormation Change Set"
-    echo "=========================================="
-
-    echo "Stack: ${STACK_NAME}"
-    echo "Change Set: ${CHANGESET_NAME}"
-    echo "Change Set Type: ${CHANGESET_TYPE}"
-    echo "Template: ${TEMPLATE_S3_URL}"
-
-    aws cloudformation create-change-set \
+    STATUS=$(aws cloudformation describe-change-set \
         --stack-name "${STACK_NAME}" \
         --change-set-name "${CHANGESET_NAME}" \
-        --change-set-type "${CHANGESET_TYPE}" \
-        --template-url "${TEMPLATE_S3_URL}" \
-        --parameters "file://${PARAMETERS_WITH_AUTH}" \
-        --tags "file://${TAGS_FILE}" \
-        --capabilities CAPABILITY_NAMED_IAM
+        --query 'Status' \
+        --output text)
+
+    REASON=$(aws cloudformation describe-change-set \
+        --stack-name "${STACK_NAME}" \
+        --change-set-name "${CHANGESET_NAME}" \
+        --query 'StatusReason' \
+        --output text)
 
     echo ""
-    echo "Change set creation request submitted successfully."
+    echo "Attempt ${i}/20"
+    echo "Status: ${STATUS}"
 
-    # --------------------------------------------------
-    # 11. Wait for Change Set
-    # --------------------------------------------------
+    if [ "${REASON}" != "None" ] && [ -n "${REASON}" ]; then
+        echo "Reason: ${REASON}"
+    fi
 
-    echo ""
-    echo "=========================================="
-    echo "Polling Change Set Status"
-    echo "=========================================="
+    case "${STATUS}" in
 
-    echo "Maximum attempts: 20"
-    echo "Interval: 15 seconds"
+        CREATE_COMPLETE)
+            echo "Change set is ready for execution."
+            FINAL_STATUS="${STATUS}"
+            break
+            ;;
 
-    FINAL_STATUS=""
+        CREATE_IN_PROGRESS|REVIEW_IN_PROGRESS)
+            echo "Change set is still being prepared."
+            echo "Waiting 15 seconds..."
+            sleep 15
+            ;;
 
-    for i in $(seq 1 20); do
+        FAILED)
+            echo "Change set creation failed."
 
-        STATUS=$(aws cloudformation describe-change-set \
-            --stack-name "${STACK_NAME}" \
-            --change-set-name "${CHANGESET_NAME}" \
-            --query 'Status' \
-            --output text)
+            if echo "${REASON}" | grep -qi "didn't contain changes"; then
+                echo "No changes detected."
+                FINAL_STATUS="NO_CHANGES"
+                break
+            fi
 
-        REASON=$(aws cloudformation describe-change-set \
-            --stack-name "${STACK_NAME}" \
-            --change-set-name "${CHANGESET_NAME}" \
-            --query 'StatusReason' \
-            --output text)
+            echo "Failure reason: ${REASON}"
+            FINAL_STATUS="FAILED"
+            break
+            ;;
 
-        echo ""
-        echo "Attempt ${i}/20"
-        echo "Status: ${STATUS}"
-
-        if [ "${REASON}" != "None" ] && [ -n "${REASON}" ]; then
+        *)
+            echo "Unexpected Change Set status: ${STATUS}"
             echo "Reason: ${REASON}"
-        fi
+            FINAL_STATUS="${STATUS}"
+            break
+            ;;
 
-        case "${STATUS}" in
+    esac
 
-            CREATE_COMPLETE)
+done
 
-                echo "Change set is ready for execution."
+# --------------------------------------------------
+# 5. Timeout protection
+# --------------------------------------------------
 
-                FINAL_STATUS="${STATUS}"
-
-                break
-
-                ;;
-
-            CREATE_IN_PROGRESS|REVIEW_IN_PROGRESS)
-
-                echo "Change set is still being prepared."
-
-                if [ "${i}" -lt 20 ]; then
-                    echo "Waiting 15 seconds..."
-                    sleep 15
-                fi
-
-                ;;
-
-            FAILED)
-
-                echo "Change set creation failed."
-
-                if echo "${REASON}" | grep -qiE \
-                    "didn't contain changes|No updates are to be performed"; then
-
-                    echo "No changes detected."
-
-                    FINAL_STATUS="NO_CHANGES"
-
-                    break
-
-                fi
-
-                echo "Failure reason: ${REASON}"
-
-                FINAL_STATUS="FAILED"
-
-                break
-
-                ;;
-
-            *)
-
-                echo "Unexpected Change Set status: ${STATUS}"
-                echo "Reason: ${REASON}"
-
-                FINAL_STATUS="${STATUS}"
-
-                break
-
-                ;;
-
-        esac
-
-    done
-
-    # --------------------------------------------------
-    # 12. Timeout protection
-    # --------------------------------------------------
-
-    if [ -z "${FINAL_STATUS}" ]; then
-
-        echo ""
-        echo "ERROR: Change set did not become ready after 5 minutes."
-
-        exit 1
-
-    fi
-
-    # --------------------------------------------------
-    # 13. Handle Change Set failure
-    # --------------------------------------------------
-
-    if [ "${FINAL_STATUS}" = "FAILED" ]; then
-
-        echo ""
-        echo "=========================================="
-        echo "Change Set FAILED"
-        echo "=========================================="
-
-        echo "Failure reason:"
-        aws cloudformation describe-change-set \
-            --stack-name "${STACK_NAME}" \
-            --change-set-name "${CHANGESET_NAME}" \
-            --query 'StatusReason' \
-            --output text
-
-        exit 1
-
-    fi
-
-    # --------------------------------------------------
-    # 14. Handle no changes
-    # --------------------------------------------------
-
-    if [ "${FINAL_STATUS}" = "NO_CHANGES" ]; then
-
-        echo ""
-        echo "=========================================="
-        echo "No Infrastructure Changes Detected"
-        echo "=========================================="
-
-        echo "CloudFormation has no infrastructure changes to apply."
-
-        echo "changeset_status=${FINAL_STATUS}" >> "${GITHUB_OUTPUT}"
-        echo "changeset_name=${CHANGESET_NAME}" >> "${GITHUB_OUTPUT}"
-
-        rm -f "${PARAMETERS_WITH_AUTH}"
-
-        exit 0
-
-    fi
-
-    # --------------------------------------------------
-    # 15. Export outputs for GitHub Actions
-    # --------------------------------------------------
-
+if [ -z "${FINAL_STATUS}" ]; then
     echo ""
-    echo "Exporting Change Set outputs..."
+    echo "ERROR: Change set did not become ready after 5 minutes."
+    exit 1
+fi
 
-    echo "changeset_status=${FINAL_STATUS}" >> "${GITHUB_OUTPUT}"
-    echo "changeset_name=${CHANGESET_NAME}" >> "${GITHUB_OUTPUT}"
+# --------------------------------------------------
+# 6. Handle failure
+# --------------------------------------------------
 
-    # --------------------------------------------------
-    # 16. Print Change Set details
-    # --------------------------------------------------
+if [ "${FINAL_STATUS}" = "FAILED" ]; then
+    echo "Change set creation failed."
+    exit 1
+fi
 
-    echo ""
-    echo "=========================================="
-    echo "Change Set Summary"
-    echo "=========================================="
+# --------------------------------------------------
+# 7. Export outputs for GitHub Actions
+# --------------------------------------------------
 
-    aws cloudformation describe-change-set \
-        --stack-name "${STACK_NAME}" \
-        --change-set-name "${CHANGESET_NAME}" \
-        --query 'Changes[*].{
-          Action:ResourceChange.Action,
-          Resource:ResourceChange.LogicalResourceId,
-          Type:ResourceChange.ResourceType,
-          Replacement:ResourceChange.Replacement
-        }' \
-        --output table || echo "No changes to display."
+echo "changeset_status=${FINAL_STATUS}" >> "${GITHUB_OUTPUT}"
+echo "changeset_name=${CHANGESET_NAME}" >> "${GITHUB_OUTPUT}"
 
-    echo ""
-    echo "=========================================="
-    echo "Change Set Processing Completed"
-    echo "=========================================="
+# --------------------------------------------------
+# 8. Print Change Set details
+# --------------------------------------------------
 
-    echo "Status: ${FINAL_STATUS}"
-    echo "Change Set: ${CHANGESET_NAME}"
+echo ""
+echo "=========================================="
+echo "Change Set Summary"
+echo "=========================================="
 
-    # --------------------------------------------------
-    # 17. Cleanup
-    # --------------------------------------------------
+aws cloudformation describe-change-set \
+    --stack-name "${STACK_NAME}" \
+    --change-set-name "${CHANGESET_NAME}" \
+    --query 'Changes[*].{Action:ResourceChange.Action,Resource:ResourceChange.LogicalResourceId,Type:ResourceChange.ResourceType,Replacement:ResourceChange.Replacement}' \
+    --output table || echo "No changes to display."
 
-    rm -f "${PARAMETERS_WITH_AUTH}"
-
-    echo ""
-    echo "Temporary files cleaned up."
+echo ""
+echo "Change Set processing completed."
+echo "Status: ${FINAL_STATUS}"
