@@ -315,23 +315,38 @@ Resources:
 
       Code:
         S3Bucket: !Ref LambdaCodeBucket
-        S3Key: !Sub order-lambda/${GitHubRunId}/order.zip
+        S3Key: !Sub order-lambda/order-${GitHubRunId}.zip
       VpcConfig:
         SubnetIds:
-        - !Ref PrivateSubnetA
-        - !Ref PrivateSubnetB
+        - Fn::ImportValue:
+            Fn::Sub: cloudmart-${Environment}-PrivateSubnetAId
+        - Fn::ImportValue:
+            Fn::Sub: cloudmart-${Environment}-PrivateSubnetBId
 
         SecurityGroupIds:
-        - !Ref LambdaSecurityGroup
-        - !Ref VPCEndpointSecurityGroup
+        - Fn::ImportValue:
+            Fn::Sub: cloudmart-${Environment}-LambdaSecurityGroupId
 
       Environment:
         Variables:
-          DB_HOST: !GetAtt CloudMartDatabase.Endpoint.Address
-          DB_PORT: "3306"
-          DB_NAME: cloudmart
-          DB_USER: admin
-          DB_PASSWORD_PARAMETER: !Ref DBPasswordParameter
+          DB_HOST:
+            Fn::ImportValue:
+              Fn::Sub: cloudmart-${Environment}-rds-endpoint
+
+          DB_PORT:
+            Fn::ImportValue:
+              Fn::Sub: cloudmart-${Environment}-rds-port
+
+          DB_NAME:
+            Fn::ImportValue:
+              Fn::Sub: cloudmart-${Environment}-database-name
+
+          DB_USER:
+            Fn::ImportValue:
+              Fn::Sub: cloudmart-${Environment}-db-master-username
+
+          DB_PASSWORD_PARAMETER: !Sub /cloudmart/${Environment}/db-password
+          EVENT_BUS_NAME: !Ref CloudMartEventBus
 
   # ==========================================================
   # PRODUCT LAMBDA
