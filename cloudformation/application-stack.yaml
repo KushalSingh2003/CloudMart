@@ -372,6 +372,7 @@ Resources:
               Fn::Sub: cloudmart-${Environment}-db-master-username
 
           DB_PASSWORD_PARAMETER: !Sub /cloudmart/${Environment}/db-password
+          EVENT_BUS_NAME: !Ref CloudMartEventBus
 
   # ==========================================================
   # CHECK STOCK LAMBDA
@@ -666,7 +667,7 @@ Resources:
 
       Protocol: email
 
-      Endpoint: your-email@example.com
+      Endpoint: kushalsingh99807@gmail.com
 
   # ==========================================================
   # EVENTBRIDGE RULE
@@ -731,6 +732,48 @@ Resources:
       Tags:
       - Key: Name
         Value: !Sub cloudmart-${Environment}-application-bucket
+  LowStockEventRule:
+    Type: AWS::Events::Rule
+
+    Properties:
+      Name: !Sub cloudmart-${Environment}-low-stock-events
+
+      EventBusName: !Ref CloudMartEventBus
+
+      EventPattern:
+        source:
+        - cloudmart.inventory
+
+        detail-type:
+        - Low Stock Alert
+
+      State: ENABLED
+
+      Targets:
+      - Arn: !Ref CloudMartSNSTopic
+        Id: LowStockSNSTarget
+  LowStockSNSTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+
+    Properties:
+      Topics:
+      - !Ref CloudMartSNSTopic
+
+      PolicyDocument:
+        Version: '2012-10-17'
+
+        Statement:
+        - Sid: AllowEventBridgePublish
+          Effect: Allow
+
+          Principal:
+            Service:
+            - events.amazonaws.com
+
+          Action:
+          - sns:Publish
+
+          Resource: !Ref CloudMartSNSTopic
 
 # ============================================================
 # OUTPUTS

@@ -341,6 +341,8 @@ DB_PASSWORD_PARAMETER = os.environ["DB_PASSWORD_PARAMETER"]
 # ------------------------------------------------------------
 
 ssm = boto3.client("ssm")
+events = boto3.client("events")
+LOW_STOCK_THRESHOLD = 5
 
 
 # ------------------------------------------------------------
@@ -707,6 +709,7 @@ def lambda_handler(event, context):
 
 
                 if cursor.rowcount == 0:
+                
 
                     return response(
                         404,
@@ -714,6 +717,23 @@ def lambda_handler(event, context):
                             "message": "Product not found"
                         }
                     )
+                if stock < LOW_STOCK_THRESHOLD:
+
+                    events.put_events(
+                        Entries=[
+                        {
+                            "EventBusName": os.environ["EVENT_BUS_NAME"],
+                            "Source": "cloudmart.inventory",
+                            "DetailType": "Low Stock Alert",
+                            "Detail": json.dumps({
+                                "ProductID": product_id,
+                                "Stock": stock,
+                                "Threshold": LOW_STOCK_THRESHOLD
+                            })
+                        }
+                    ]
+                )
+                
 
 
             return response(
