@@ -24,7 +24,7 @@ Parameters:
   GitHubRunId:
     Description: GitHub Actions run ID for versioned Lambda artifact deployment
     Type: String
-    Default: "0"
+
 # ============================================================
 # RESOURCES
 # ============================================================

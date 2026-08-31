@@ -224,10 +224,14 @@ echo "Preparing CloudFormation parameters..."
 
 PARAMETERS_WITH_AUTH=$(mktemp)
 
-jq --arg token "$AUTH_TOKEN" \
-    '. + [{"ParameterKey":"AuthToken","ParameterValue":$token}]' \
-    "$PARAMETERS_FILE" > "$PARAMETERS_WITH_AUTH"
-
+jq \
+  --arg runid "$GITHUB_RUN_ID" \
+  --arg token "$AUTH_TOKEN" \
+  '. + [
+    {"ParameterKey":"GitHubRunId","ParameterValue":$runid},
+    {"ParameterKey":"AuthToken","ParameterValue":$token}
+  ]' \
+  "$PARAMETERS_FILE" > "$PARAMETERS_WITH_AUTH"
 echo "CloudFormation parameters prepared."
 
 # --------------------------------------------------
