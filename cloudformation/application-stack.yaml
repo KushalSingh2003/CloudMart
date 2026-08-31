@@ -134,6 +134,7 @@ Resources:
 
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
 
       Policies:
 
@@ -314,7 +315,23 @@ Resources:
 
       Code:
         S3Bucket: !Ref LambdaCodeBucket
-        S3Key: lambdas/order.zip
+        S3Key: !Sub order-lambda/${GitHubRunId}/order.zip
+      VpcConfig:
+        SubnetIds:
+        - !Ref PrivateSubnetA
+        - !Ref PrivateSubnetB
+
+        SecurityGroupIds:
+        - !Ref LambdaSecurityGroup
+        - !Ref VPCEndpointSecurityGroup
+
+      Environment:
+        Variables:
+          DB_HOST: !GetAtt CloudMartDatabase.Endpoint.Address
+          DB_PORT: "3306"
+          DB_NAME: cloudmart
+          DB_USER: admin
+          DB_PASSWORD_PARAMETER: !Ref DBPasswordParameter
 
   # ==========================================================
   # PRODUCT LAMBDA
