@@ -603,7 +603,7 @@ Resources:
     Type: AWS::ApiGateway::Method
     Properties:
       RestApiId: !Ref CloudMartApi
-      ResourceId: !Ref ProductsIdResource
+      ResourceId: !Ref ProductIdResource
       HttpMethod: DELETE
 
       AuthorizationType: CUSTOM
