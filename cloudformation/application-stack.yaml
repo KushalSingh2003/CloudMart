@@ -576,6 +576,46 @@ Resources:
         Uri: !Sub
           - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ProductLambdaArn}/invocations
           - ProductLambdaArn: !GetAtt ProductLambda.Arn
+  ProductIdResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref CloudMartApi
+      ParentId: !Ref ProductsResource
+      PathPart: "{productId}"
+  ProductsPutMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref CloudMartApi
+      ResourceId: !Ref ProductIdResource
+      HttpMethod: PUT
+
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref CloudMartAuthorizer
+
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ProductLambdaArn}/invocations
+          - ProductLambdaArn: !GetAtt ProductLambda.Arn
+
+
+  ProductsDeleteMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref CloudMartApi
+      ResourceId: !Ref ProductsIdResource
+      HttpMethod: DELETE
+
+        AuthorizationType: CUSTOM
+        AuthorizerId: !Ref CloudMartAuthorizer
+
+        Integration:
+          Type: AWS_PROXY
+          IntegrationHttpMethod: POST
+          Uri: !Sub
+            - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ProductLambdaArn}/invocations
+            - ProductLambdaArn: !GetAtt ProductLambda.Arn
 
   ProductLambdaPermission:
     Type: AWS::Lambda::Permission

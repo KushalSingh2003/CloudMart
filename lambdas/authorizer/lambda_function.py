@@ -11,7 +11,11 @@ def lambda_handler(event, context):
     print("Authorizer Lambda invoked")
 
     headers = event.get("headers", {})
-    provided_token = headers.get("Authorization")
+
+    provided_token = (
+        headers.get("Authorization")
+        or headers.get("authorization")
+    )
 
     if not provided_token:
         print("No authentication token provided")
@@ -26,11 +30,21 @@ def lambda_handler(event, context):
 
     if provided_token == expected_token:
         print("Authentication successful")
-        return generate_policy("Allow", event["methodArn"])
+
+        method_arn = event["methodArn"]
+
+        tmp = method_arn.split(":")
+        api_gateway_arn = tmp[5].split("/")
+
+        wildcard_resource = (
+            f"{tmp[0]}:{tmp[1]}:{tmp[2]}:{tmp[3]}:{tmp[4]}:"
+            f"{api_gateway_arn[0]}/{api_gateway_arn[1]}/*/*"
+        )
+
+        return generate_policy("Allow", wildcard_resource)
 
     print("Authentication failed")
     return generate_policy("Deny", event["methodArn"])
-
 
 def generate_policy(effect, resource):
 
