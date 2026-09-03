@@ -219,21 +219,46 @@ fi
 # 3. Create parameters file
 # --------------------------------------------------
 
+
+
 echo ""
 echo "Preparing CloudFormation parameters..."
 
 PARAMETERS_WITH_AUTH=$(mktemp)
 
-jq \
-  --arg runid "$GITHUB_RUN_ID" \
-  --arg token "$AUTH_TOKEN" \
-  '. + [
-    {"ParameterKey":"GitHubRunId","ParameterValue":$runid},
-    {"ParameterKey":"AuthToken","ParameterValue":$token}
-  ]' \
-  "$PARAMETERS_FILE" > "$PARAMETERS_WITH_AUTH"
-echo "CloudFormation parameters prepared."
+if [ -n "${PARAMETERS_FILE}" ]; then
 
+    echo "Using parameters file: ${PARAMETERS_FILE}"
+
+    jq \
+      --arg runid "$GITHUB_RUN_ID" \
+      --arg token "$AUTH_TOKEN" \
+      '. + [
+        {"ParameterKey":"GitHubRunId","ParameterValue":$runid},
+        {"ParameterKey":"AuthToken","ParameterValue":$token}
+      ]' \
+      "$PARAMETERS_FILE" > "$PARAMETERS_WITH_AUTH"
+
+else
+
+    echo "No parameters file provided."
+    echo "Using GitHub Secrets for database parameters."
+
+    jq -n \
+      --arg environment "$ENVIRONMENT" \
+      --arg dbname "$DB_NAME" \
+      --arg username "$DB_USERNAME" \
+      --arg password "$DB_PASSWORD" \
+      '[
+        {"ParameterKey":"Environment","ParameterValue":$environment},
+        {"ParameterKey":"DatabaseName","ParameterValue":$dbname},
+        {"ParameterKey":"MasterUsername","ParameterValue":$username},
+        {"ParameterKey":"MasterUserPassword","ParameterValue":$password}
+      ]' > "$PARAMETERS_WITH_AUTH"
+
+fi
+
+echo "CloudFormation parameters prepared."
 # --------------------------------------------------
 # 4. Create Change Set
 # --------------------------------------------------
