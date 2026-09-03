@@ -881,52 +881,40 @@ import pymysql
 # ------------------------------------------------------------
 # Environment variables
 # ------------------------------------------------------------
-
-DB_HOST = os.environ["DB_HOST"]
-DB_PORT = int(os.environ.get("DB_PORT", 3306))
-DB_NAME = os.environ["DB_NAME"]
-DB_USER = os.environ["DB_USER"]
+DB_HOST_PARAMETER = os.environ["DB_HOST_PARAMETER"]
+DB_PORT_PARAMETER = os.environ["DB_PORT_PARAMETER"]
+DB_NAME_PARAMETER = os.environ["DB_NAME_PARAMETER"]
+DB_USER_PARAMETER = os.environ["DB_USER_PARAMETER"]
 DB_PASSWORD_PARAMETER = os.environ["DB_PASSWORD_PARAMETER"]
 
-
-# ------------------------------------------------------------
-# AWS clients
-# ------------------------------------------------------------
 
 ssm = boto3.client("ssm")
 events = boto3.client("events")
 
-LOW_STOCK_THRESHOLD = 5
 
-
-# ------------------------------------------------------------
-# Get DB password from SSM Parameter Store
-# ------------------------------------------------------------
-
-def get_db_password():
-
+def get_ssm_parameter(parameter_name):
     response = ssm.get_parameter(
-        Name=DB_PASSWORD_PARAMETER,
+        Name=parameter_name,
         WithDecryption=True
     )
 
     return response["Parameter"]["Value"]
 
 
-# ------------------------------------------------------------
-# Connect to RDS MySQL
-# ------------------------------------------------------------
-
 def get_connection():
 
-    password = get_db_password()
+    host = get_ssm_parameter(DB_HOST_PARAMETER)
+    port = int(get_ssm_parameter(DB_PORT_PARAMETER))
+    database = get_ssm_parameter(DB_NAME_PARAMETER)
+    user = get_ssm_parameter(DB_USER_PARAMETER)
+    password = get_ssm_parameter(DB_PASSWORD_PARAMETER)
 
     return pymysql.connect(
-        host=DB_HOST,
-        port=DB_PORT,
-        user=DB_USER,
+        host=host,
+        port=port,
+        user=user,
         password=password,
-        database=DB_NAME,
+        database=database,
         cursorclass=pymysql.cursors.DictCursor,
         autocommit=False
     )

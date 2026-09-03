@@ -145,7 +145,7 @@ Resources:
           - Effect: Allow
             Action:
             - ssm:GetParameter
-            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db-password
+            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db-*
 
       - PolicyName: PublishEvents
         PolicyDocument:
@@ -193,7 +193,7 @@ Resources:
           - Effect: Allow
             Action:
             - ssm:GetParameter
-            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db-password
+            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db-*
 
       - PolicyName: PublishEvents
         PolicyDocument:
