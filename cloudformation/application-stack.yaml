@@ -550,14 +550,14 @@ Resources:
         - REGIONAL
 
   ApiDeployment:
-  Type: AWS::ApiGateway::Deployment
+    Type: AWS::ApiGateway::Deployment
     DependsOn:
-      - ProductsGetMethod
-      - ProductsPostMethod
-      - ProductsPutMethod
-      - ProductsDeleteMethod
-      - ProductsGetByIdMethod
-      - ProductsPatchMethod
+    - ProductsGetMethod
+    - ProductsPostMethod
+    - ProductsPutMethod
+    - ProductsDeleteMethod
+    - ProductsGetByIdMethod
+    - ProductsPatchMethod
     Properties:
       RestApiId: !Ref CloudMartApi
       StageName: dev
@@ -655,7 +655,7 @@ Resources:
   ProductsGetByIdMethod:
     Type: AWS::ApiGateway::Method
     DependsOn:
-     - CloudMartAuthorizer
+    - CloudMartAuthorizer
     Properties:
       RestApiId: !Ref CloudMartApi
       ResourceId: !Ref ProductIdResource
@@ -673,7 +673,7 @@ Resources:
   ProductsPatchMethod:
     Type: AWS::ApiGateway::Method
     DependsOn:
-      - CloudMartAuthorizer
+    - CloudMartAuthorizer
     Properties:
       RestApiId: !Ref CloudMartApi
       ResourceId: !Ref ProductIdResource
