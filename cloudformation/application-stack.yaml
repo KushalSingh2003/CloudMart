@@ -533,6 +533,9 @@ Resources:
     - ProductsDeleteMethod
     - ProductsGetByIdMethod
     - ProductsPatchMethod
+    - OrdersGetMethod
+    - OrdersPostMethod
+    - OrdersGetByIdMethod
     Properties:
       RestApiId: !Ref CloudMartApi
       StageName: dev
@@ -542,11 +545,76 @@ Resources:
 
   OrdersResource:
     Type: AWS::ApiGateway::Resource
-
     Properties:
       RestApiId: !Ref CloudMartApi
       ParentId: !GetAtt CloudMartApi.RootResourceId
       PathPart: orders
+
+  OrdersGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref CloudMartApi
+      ResourceId: !Ref OrdersResource
+      HttpMethod: GET
+
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref CloudMartAuthorizer
+
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OrderLambdaArn}/invocations
+          - OrderLambdaArn: !GetAtt OrderLambda.Arn
+
+  OrdersPostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref CloudMartApi
+      ResourceId: !Ref OrdersResource
+      HttpMethod: POST
+
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref CloudMartAuthorizer
+
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OrderLambdaArn}/invocations
+          - OrderLambdaArn: !GetAtt OrderLambda.Arn
+
+  OrderIdResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref CloudMartApi
+      ParentId: !Ref OrdersResource
+      PathPart: "{orderId}"
+
+  OrdersGetByIdMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref CloudMartApi
+      ResourceId: !Ref OrderIdResource
+      HttpMethod: GET
+
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref CloudMartAuthorizer
+
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OrderLambdaArn}/invocations
+          - OrderLambdaArn: !GetAtt OrderLambda.Arn
+
+  OrderLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref OrderLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${CloudMartApi}/*/*/orders*
 
   ProductsResource:
     Type: AWS::ApiGateway::Resource
