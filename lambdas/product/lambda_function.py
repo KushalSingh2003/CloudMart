@@ -601,6 +601,13 @@ def lambda_handler(event, context):
             stock = body.get("Stock", 0)
 
             category_id = body["CategoryID"]
+            if stock<0  or price < 0:
+                return response(
+                    400,
+                    {
+                        "message": "Stock and price cannot be negative"
+                    }
+                )
 
 
             with connection.cursor() as cursor:
@@ -676,7 +683,13 @@ def lambda_handler(event, context):
 
             category_id = body["CategoryID"]
 
-
+            if stock<0  or price < 0:
+                return response(
+                    400,
+                    {
+                        "message": "Stock and price cannot be negative"
+                    }
+                )
             with connection.cursor() as cursor:
 
                 cursor.execute(
