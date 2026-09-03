@@ -326,27 +326,15 @@ Resources:
         SecurityGroupIds:
         - Fn::ImportValue:
             Fn::Sub: cloudmart-${Environment}-LambdaSecurityGroupId
+        Environment:
+          Variables:
+            DB_HOST_PARAMETER: !Sub /cloudmart/${Environment}/db-endpoint
+            DB_PORT_PARAMETER: !Sub /cloudmart/${Environment}/db-port
+            DB_NAME_PARAMETER: !Sub /cloudmart/${Environment}/db-name
+            DB_USER_PARAMETER: !Sub /cloudmart/${Environment}/db-username
+            DB_PASSWORD_PARAMETER: !Sub /cloudmart/${Environment}/db-password
 
-      Environment:
-        Variables:
-          DB_HOST:
-            Fn::ImportValue:
-              Fn::Sub: cloudmart-${Environment}-rds-endpoint
-
-          DB_PORT:
-            Fn::ImportValue:
-              Fn::Sub: cloudmart-${Environment}-rds-port
-
-          DB_NAME:
-            Fn::ImportValue:
-              Fn::Sub: cloudmart-${Environment}-database-name
-
-          DB_USER:
-            Fn::ImportValue:
-              Fn::Sub: cloudmart-${Environment}-db-master-username
-
-          DB_PASSWORD_PARAMETER: !Sub /cloudmart/${Environment}/db-password
-          EVENT_BUS_NAME: !Ref CloudMartEventBus
+            EVENT_BUS_NAME: !Ref CloudMartEventBus
 
   # ==========================================================
   # PRODUCT LAMBDA
@@ -384,27 +372,15 @@ Resources:
         - Fn::ImportValue:
             Fn::Sub: cloudmart-${Environment}-LambdaSecurityGroupId
 
-      Environment:
-        Variables:
+        Environment:
+          Variables:
+            DB_HOST_PARAMETER: !Sub /cloudmart/${Environment}/db-endpoint
+            DB_PORT_PARAMETER: !Sub /cloudmart/${Environment}/db-port
+            DB_NAME_PARAMETER: !Sub /cloudmart/${Environment}/db-name
+            DB_USER_PARAMETER: !Sub /cloudmart/${Environment}/db-username
+            DB_PASSWORD_PARAMETER: !Sub /cloudmart/${Environment}/db-password
 
-          DB_HOST:
-            Fn::ImportValue:
-              Fn::Sub: cloudmart-${Environment}-rds-endpoint
-
-          DB_PORT:
-            Fn::ImportValue:
-              Fn::Sub: cloudmart-${Environment}-rds-port
-
-          DB_NAME:
-            Fn::ImportValue:
-              Fn::Sub: cloudmart-${Environment}-database-name
-
-          DB_USER:
-            Fn::ImportValue:
-              Fn::Sub: cloudmart-${Environment}-db-master-username
-
-          DB_PASSWORD_PARAMETER: !Sub /cloudmart/${Environment}/db-password
-          EVENT_BUS_NAME: !Ref CloudMartEventBus
+            EVENT_BUS_NAME: !Ref CloudMartEventBus
 
   # ==========================================================
   # CHECK STOCK LAMBDA
