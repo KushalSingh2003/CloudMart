@@ -630,8 +630,6 @@ Resources:
           - ProductLambdaArn: !GetAtt ProductLambda.Arn
   ProductsGetByIdMethod:
     Type: AWS::ApiGateway::Method
-    DependsOn:
-    - CloudMartAuthorizer
     Properties:
       RestApiId: !Ref CloudMartApi
       ResourceId: !Ref ProductIdResource
@@ -648,8 +646,6 @@ Resources:
           - ProductLambdaArn: !GetAtt ProductLambda.Arn
   ProductsPatchMethod:
     Type: AWS::ApiGateway::Method
-    DependsOn:
-    - CloudMartAuthorizer
     Properties:
       RestApiId: !Ref CloudMartApi
       ResourceId: !Ref ProductIdResource
