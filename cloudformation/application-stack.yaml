@@ -536,6 +536,9 @@ Resources:
     - OrdersGetMethod
     - OrdersPostMethod
     - OrdersGetByIdMethod
+    - OrdersDeleteMethod
+    - OrderPatchMethod
+    - OrderPutMethod
     Properties:
       RestApiId: !Ref CloudMartApi
       StageName: dev
@@ -597,6 +600,53 @@ Resources:
       RestApiId: !Ref CloudMartApi
       ResourceId: !Ref OrderIdResource
       HttpMethod: GET
+
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref CloudMartAuthorizer
+
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OrderLambdaArn}/invocations
+          - OrderLambdaArn: !GetAtt OrderLambda.Arn
+  OrdersDeleteMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref CloudMartApi
+      ResourceId: !Ref OrderIdResource
+      HttpMethod: DELETE
+
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref CloudMartAuthorizer
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OrderLambdaArn}/invocations
+          - OrderLambdaArn: !GetAtt OrderLambda.Arn
+  OrderPatchMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref CloudMartApi
+      ResourceId: !Ref OrderIdResource
+      HttpMethod: PATCH
+
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref CloudMartAuthorizer
+
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OrderLambdaArn}/invocations
+          - OrderLambdaArn: !GetAtt OrderLambda.Arn
+  OrderPutMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref CloudMartApi
+      ResourceId: !Ref OrderIdResource
+      HttpMethod: PUT
 
       AuthorizationType: CUSTOM
       AuthorizerId: !Ref CloudMartAuthorizer
