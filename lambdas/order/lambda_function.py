@@ -858,7 +858,7 @@ def lambda_handler(event, context):
                     (
                         %s,
                         %s,
-                        'PENDING'
+                        'Active'
                     )
                     """,
                     (
