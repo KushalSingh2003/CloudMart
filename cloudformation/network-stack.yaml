@@ -5,6 +5,13 @@ Description: >
 
 Parameters:
 
+  GitHubRunId:
+    Type: String
+
+  AuthToken:
+    Type: String
+    NoEcho: true
+
   Environment:
     Type: String
     Default: dev

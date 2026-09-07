@@ -34,6 +34,7 @@ jobs:
 
   data:
     name: Deploy Data Stack
+    needs: network
     uses: ./.github/workflows/deploy-stack.yaml
     with:
       stack_name: data-stack-CloudMart
@@ -43,6 +44,7 @@ jobs:
     secrets: inherit
   package-lambdas:
     name: Package Lambda Functions seventh  attempt
+    needs: [ data, network ]
 
     runs-on: ubuntu-latest
 
@@ -134,7 +136,7 @@ jobs:
         aws s3 cp authorizer.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/authorizer.zip/
   application:
     name: Deploy Application Stack
-    needs: package-lambdas
+    needs: [ package-lambdas, data, network ]
 
     uses: ./.github/workflows/deploy-stack.yaml
     with:
