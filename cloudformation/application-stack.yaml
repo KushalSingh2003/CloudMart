@@ -42,77 +42,6 @@ Resources:
       Name: !Sub cloudmart-${Environment}-event-bus
 
   # ==========================================================
-  # IAM ROLE - EC2
-  # ==========================================================
-
-  ApplicationEC2Role:
-    Type: AWS::IAM::Role
-
-    Properties:
-      RoleName: !Sub cloudmart-${Environment}-ec2-role
-
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-        - Effect: Allow
-          Principal:
-            Service:
-            - ec2.amazonaws.com
-          Action:
-          - sts:AssumeRole
-
-      ManagedPolicyArns:
-      - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
-
-      Tags:
-      - Key: Name
-        Value: !Sub cloudmart-${Environment}-ec2-role
-
-  # ==========================================================
-  # EC2 INSTANCE PROFILE
-  # ==========================================================
-
-  ApplicationEC2InstanceProfile:
-    Type: AWS::IAM::InstanceProfile
-
-    Properties:
-      Roles:
-      - !Ref ApplicationEC2Role
-  AuthTokenParameter:
-    Type: AWS::SSM::Parameter
-    Properties:
-      Name: !Sub /cloudmart/${Environment}/auth-token
-      Type: String
-      Value: !Ref AuthToken
-      Description: CloudMart API authentication token
-  # ==========================================================
-  # EC2 INSTANCE
-  # ==========================================================
-
-  ApplicationEC2:
-    Type: AWS::EC2::Instance
-
-    Properties:
-
-      ImageId: '{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}'
-
-      InstanceType: t3.micro
-
-      NetworkInterfaces:
-      - DeviceIndex: '0'
-        AssociatePublicIpAddress: true
-        SubnetId:
-          Fn::ImportValue: !Sub cloudmart-${Environment}-PublicSubnetId
-        GroupSet:
-        - Fn::ImportValue: !Sub cloudmart-${Environment}-EC2SecurityGroupId
-
-      IamInstanceProfile: !Ref ApplicationEC2InstanceProfile
-
-      Tags:
-      - Key: Name
-        Value: !Sub cloudmart-${Environment}-application-ec2
-
-  # ==========================================================
   # ORDER LAMBDA IAM ROLE
   # ==========================================================
 
@@ -941,18 +870,6 @@ Resources:
 # ============================================================
 
 Outputs:
-
-  EC2InstanceId:
-    Description: Application EC2 Instance ID
-    Value: !Ref ApplicationEC2
-
-  EC2PublicIp:
-    Description: Application EC2 Public IP
-    Value: !GetAtt ApplicationEC2.PublicIp
-
-  EC2Role:
-    Description: EC2 IAM Role
-    Value: !Ref ApplicationEC2Role
 
   EventBusArn:
     Description: CloudMart EventBridge Event Bus ARN

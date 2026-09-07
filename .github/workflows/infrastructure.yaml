@@ -21,26 +21,26 @@ permissions:
   contents: read
 
 jobs:
-  # network:
-  #   name: Deploy Network Stacks first attempt
-  #   uses: ./.github/workflows/deploy-stack.yaml
-  #   with:
-  #     stack_name: network-stack-CloudMart
-  #     template_file: cloudformation/network-stack.yaml
-  #     parameters_file: cloudformation/config/network-parameters.json
-  #     tags_file: cloudformation/config/tags.json
-  #     environment: dev
-  #   secrets: inherit
+  network:
+    name: Deploy Network Stacks first attempt
+    uses: ./.github/workflows/deploy-stack.yaml
+    with:
+      stack_name: network-stack-CloudMart
+      template_file: cloudformation/network-stack.yaml
+      parameters_file: cloudformation/config/network-parameters.json
+      tags_file: cloudformation/config/tags.json
+      environment: dev
+    secrets: inherit
 
-  # data:
-  #   name: Deploy Data Stack
-  #   uses: ./.github/workflows/deploy-stack.yaml
-  #   with:
-  #     stack_name: data-stack-CloudMart
-  #     template_file: cloudformation/data-stack.yaml
-  #     tags_file: cloudformation/config/tags.json
-  #     environment: dev
-  #   secrets: inherit
+  data:
+    name: Deploy Data Stack
+    uses: ./.github/workflows/deploy-stack.yaml
+    with:
+      stack_name: data-stack-CloudMart
+      template_file: cloudformation/data-stack.yaml
+      tags_file: cloudformation/config/tags.json
+      environment: dev
+    secrets: inherit
   package-lambdas:
     name: Package Lambda Functions seventh  attempt
 
