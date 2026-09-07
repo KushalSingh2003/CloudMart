@@ -133,7 +133,7 @@ jobs:
         aws s3 cp product.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/product-${GITHUB_RUN_ID}.zip
         aws s3 cp report.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/report.zip
         aws s3 cp stock_change.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/stock_change.zip
-        aws s3 cp authorizer.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/authorizer.zip/
+        aws s3 cp authorizer.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/authorizer-${GITHUB_RUN_ID}.zip
   application:
     name: Deploy Application Stack
     needs: package-lambdas
