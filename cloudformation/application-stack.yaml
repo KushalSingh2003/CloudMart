@@ -416,7 +416,7 @@ Resources:
 
       Code:
         S3Bucket: !Ref LambdaCodeBucket
-        S3Key: lambdas/authorizer-${GitHubRunId}.zip
+        S3Key: !Sub lambdas/authorizer-${GitHubRunId}.zip
 
       Environment:
         Variables:

@@ -890,6 +890,7 @@ DB_PASSWORD_PARAMETER = os.environ["DB_PASSWORD_PARAMETER"]
 
 ssm = boto3.client("ssm")
 events = boto3.client("events")
+LOW_STOCK_THRESHOLD = 5
 
 
 def get_ssm_parameter(parameter_name):
