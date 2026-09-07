@@ -5,6 +5,15 @@ CREATE TABLE IF NOT EXISTS Category (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS Customers (
+    customer_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    phone VARCHAR(20),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    changed_at TIMESTAMP NULL
+);
+
 CREATE TABLE IF NOT EXISTS Products (
     product_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -13,7 +22,6 @@ CREATE TABLE IF NOT EXISTS Products (
     stock INT NOT NULL DEFAULT 0,
     status VARCHAR(50) NOT NULL,
     category_id BIGINT NOT NULL,
-
     CONSTRAINT fk_product_category
         FOREIGN KEY (category_id)
         REFERENCES Category(category_id)
@@ -24,10 +32,15 @@ CREATE TABLE IF NOT EXISTS Orders (
     customer_id BIGINT NOT NULL,
     total_amount DECIMAL(10,2) NOT NULL,
     status VARCHAR(50) NOT NULL,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     changed_at TIMESTAMP NULL,
     cancelled_at TIMESTAMP NULL,
-    cancel_reason VARCHAR(500)
+    cancel_reason VARCHAR(500),
+
+    CONSTRAINT fk_order_customer
+        FOREIGN KEY (customer_id)
+        REFERENCES Customers(customer_id)
 );
 
 CREATE TABLE IF NOT EXISTS Orders_Items (
@@ -50,11 +63,10 @@ CREATE TABLE IF NOT EXISTS Orders_Items (
 CREATE TABLE IF NOT EXISTS Orders_History (
     order_history_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     order_id BIGINT NOT NULL,
-    product_id BIGINT,
     customer_id BIGINT,
-    quantity INT,
     total_amount DECIMAL(10,2),
     status VARCHAR(50),
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     archived_at TIMESTAMP NULL,
     cancelled_at TIMESTAMP NULL,
@@ -62,5 +74,9 @@ CREATE TABLE IF NOT EXISTS Orders_History (
 
     CONSTRAINT fk_history_order
         FOREIGN KEY (order_id)
-        REFERENCES Orders(order_id)
+        REFERENCES Orders(order_id),
+
+    CONSTRAINT fk_history_customer
+        FOREIGN KEY (customer_id)
+        REFERENCES Customers(customer_id)
 );
