@@ -767,38 +767,81 @@ Resources:
     Type: AWS::Events::Rule
 
     Properties:
+
       Name: !Sub cloudmart-${Environment}-order-events
 
       EventBusName: !Ref CloudMartEventBus
 
       EventPattern:
+
         source:
         - cloudmart
 
         detail-type:
-        - OrderEvent
+        - OrderCreated
+        - OrderFailed
+        - OrderStatusChanged
+        - OrderConfirmed
 
       State: ENABLED
 
       Targets:
-      - Arn: !GetAtt OrderLambda.Arn
-        Id: OrderLambdaTarget
 
+      - Arn: !Ref CloudMartSNSTopic
+        Id: OrderSNSTarget
+  OrderSNSTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+
+    Properties:
+
+      Topics:
+      - !Ref CloudMartSNSTopic
+
+      PolicyDocument:
+
+        Version: '2012-10-17'
+
+        Statement:
+
+        - Sid: AllowEventBridgePublish
+
+          Effect: Allow
+
+          Principal:
+            Service:
+            - events.amazonaws.com
+
+          Action:
+          - sns:Publish
+
+          Resource: !Ref CloudMartSNSTopic
   # ==========================================================
   # LAMBDA PERMISSION FOR EVENTBRIDGE
   # ==========================================================
 
-  OrderLambdaEventBridgePermission:
-    Type: AWS::Lambda::Permission
+  OrderLambdaEventBridgePolicy:
+    Type: AWS::IAM::Policy
 
     Properties:
-      FunctionName: !Ref OrderLambda
 
-      Action: lambda:InvokeFunction
+      PolicyName: !Sub cloudmart-${Environment}-order-eventbridge-policy
 
-      Principal: events.amazonaws.com
+      Roles:
+      - !Ref OrderLambdaRole
 
-      SourceArn: !GetAtt OrderEventRule.Arn
+      PolicyDocument:
+
+        Version: '2012-10-17'
+
+        Statement:
+
+        - Effect: Allow
+
+          Action:
+          - events:PutEvents
+
+          Resource:
+          - !GetAtt CloudMartEventBus.Arn
 
   # ==========================================================
   # APPLICATION S3 BUCKET
