@@ -380,6 +380,7 @@ Resources:
 
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
 
       Policies:
 
@@ -391,6 +392,14 @@ Resources:
             Action:
             - ssm:GetParameter
             Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/auth-token
+      - PolicyName: ReadDBCredentials
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - ssm:GetParameter
+            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db-*
 
       Tags:
       - Key: Name
@@ -417,9 +426,24 @@ Resources:
       Code:
         S3Bucket: !Ref LambdaCodeBucket
         S3Key: !Sub lambdas/authorizer-${GitHubRunId}.zip
+      VpcConfig:
+        SubnetIds:
+        - Fn::ImportValue:
+            Fn::Sub: cloudmart-${Environment}-PrivateSubnetAId
+        - Fn::ImportValue:
+            Fn::Sub: cloudmart-${Environment}-PrivateSubnetBId
+
+        SecurityGroupIds:
+        - Fn::ImportValue:
+            Fn::Sub: cloudmart-${Environment}-LambdaSecurityGroupId
 
       Environment:
         Variables:
+          DB_HOST_PARAMETER: !Sub /cloudmart/${Environment}/db-endpoint
+          DB_PASSWORD_PARAMETER: !Sub /cloudmart/${Environment}/db-password
+          DB_USER_PARAMETER: !Sub /cloudmart/${Environment}/db-username
+          DB_NAME_PARAMETER: !Sub /cloudmart/${Environment}/db-name
+          DB_PORT_PARAMETER: !Sub /cloudmart/${Environment}/db-port
           AUTH_TOKEN_PARAMETER: !Sub /cloudmart/${Environment}/auth-token
   AuthorizerLambdaPermission:
     Type: AWS::Lambda::Permission
@@ -437,7 +461,7 @@ Resources:
       AuthorizerUri: !Sub
         - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AuthorizerArn}/invocations
         - AuthorizerArn: !GetAtt LambdaAuthorizer.Arn
-      IdentitySource: method.request.header.Authorization
+      IdentitySource: method.request.header.Authorization,method.request.querystring.user_id
 
   # ==========================================================
   # API GATEWAY
