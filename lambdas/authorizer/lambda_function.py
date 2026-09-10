@@ -332,6 +332,421 @@
 
 #     return policy
 # 
+# import os
+# import re
+# import boto3
+# import pymysql
+
+
+# # ============================================================
+# # SSM Configuration
+# # ============================================================
+
+# DB_HOST_PARAMETER = os.environ["DB_HOST_PARAMETER"]
+# DB_PORT_PARAMETER = os.environ["DB_PORT_PARAMETER"]
+# DB_NAME_PARAMETER = os.environ["DB_NAME_PARAMETER"]
+# DB_USER_PARAMETER = os.environ["DB_USER_PARAMETER"]
+# DB_PASSWORD_PARAMETER = os.environ["DB_PASSWORD_PARAMETER"]
+
+# ssm = boto3.client("ssm")
+
+
+# # ============================================================
+# # Role-Based Permissions
+# # ============================================================
+
+# PERMISSIONS = {
+
+#     "CUSTOMER": {
+
+#         "GET": [
+#             "/products",
+#             "/products/{id}",
+#             "/orders/{id}"
+#         ],
+
+#         "POST": [
+#             "/orders"
+#         ],
+
+#         "PATCH": [
+#             "/orders/{id}"
+#         ]
+#     },
+
+#     "ADMIN": {
+
+#         "GET": [
+#             "/products",
+#             "/products/{id}",
+#             "/orders",
+#             "/orders/{id}"
+#         ],
+
+#         "POST": [
+#             "/products",
+#             "/orders"
+#         ],
+
+#         "PATCH": [
+#             "/products/{id}",
+#             "/orders/{id}"
+#         ],
+
+#         "DELETE": [
+#             "/products/{id}"
+#         ]
+#     }
+# }
+
+
+# # ============================================================
+# # Get SSM Parameter
+# # ============================================================
+
+# def get_ssm_parameter(parameter_name):
+
+#     response = ssm.get_parameter(
+#         Name=parameter_name,
+#         WithDecryption=True
+#     )
+
+#     return response["Parameter"]["Value"]
+
+
+# # ============================================================
+# # Database Connection
+# # ============================================================
+
+# def get_connection():
+
+#     host = get_ssm_parameter(DB_HOST_PARAMETER)
+#     port = int(get_ssm_parameter(DB_PORT_PARAMETER))
+#     database = get_ssm_parameter(DB_NAME_PARAMETER)
+#     user = get_ssm_parameter(DB_USER_PARAMETER)
+#     password = get_ssm_parameter(DB_PASSWORD_PARAMETER)
+
+#     return pymysql.connect(
+#         host=host,
+#         port=port,
+#         user=user,
+#         password=password,
+#         database=database,
+#         cursorclass=pymysql.cursors.DictCursor,
+#         autocommit=False
+#     )
+
+
+# # ============================================================
+# # Lambda Handler
+# # ============================================================
+
+# def lambda_handler(event, context):
+
+#     print("Authorizer Lambda invoked")
+#     print("Event:", event)
+
+#     try:
+
+#         # ----------------------------------------------------
+#         # 1. Get Authorization header
+#         # ----------------------------------------------------
+
+#         headers = event.get("headers") or {}
+
+#         authorization = (
+#             headers.get("Authorization")
+#             or headers.get("authorization")
+#         )
+
+#         if not authorization:
+
+#             print("No Authorization header")
+
+#             return generate_policy(
+#                 "Deny",
+#                 event["methodArn"]
+#             )
+
+
+#         # ----------------------------------------------------
+#         # 2. Validate Bearer token format
+#         # ----------------------------------------------------
+
+#         if not authorization.startswith("Bearer "):
+
+#             print("Invalid Authorization format")
+
+#             return generate_policy(
+#                 "Deny",
+#                 event["methodArn"]
+#             )
+
+#         token = authorization[7:].strip()
+
+#         if not token:
+
+#             print("Empty token")
+
+#             return generate_policy(
+#                 "Deny",
+#                 event["methodArn"]
+#             )
+
+
+#         # ----------------------------------------------------
+#         # 3. Get user_id from query parameter
+#         # ----------------------------------------------------
+
+#         query_parameters = event.get("queryStringParameters") or {}
+
+#         user_id = query_parameters.get("user_id")
+
+#         if not user_id:
+
+#             print("No user_id provided")
+
+#             return generate_policy(
+#                 "Deny",
+#                 event["methodArn"]
+#             )
+
+#         print(f"User ID: {user_id}")
+
+
+#         # ----------------------------------------------------
+#         # 4. Connect to database
+#         # ----------------------------------------------------
+
+#         connection = get_connection()
+
+
+#         # ----------------------------------------------------
+#         # 5. Find user using user_id + token
+#         # ----------------------------------------------------
+
+#         try:
+
+#             with connection.cursor() as cursor:
+
+#                 sql = """
+#                     SELECT user_id, role
+#                     FROM Customers
+#                     WHERE user_id = %s
+#                     AND token = %s
+#                     LIMIT 1
+#                 """
+
+#                 cursor.execute(
+#                     sql,
+#                     (user_id, token)
+#                 )
+
+#                 user = cursor.fetchone()
+
+#         finally:
+
+#             connection.close()
+
+
+#         # ----------------------------------------------------
+#         # 6. Validate user_id + token
+#         # ----------------------------------------------------
+
+#         if not user:
+
+#             print("Invalid user_id or token")
+
+#             return generate_policy(
+#                 "Deny",
+#                 event["methodArn"]
+#             )
+
+
+#         # ----------------------------------------------------
+#         # 7. Get user's role
+#         # ----------------------------------------------------
+
+#         role = user["role"]
+
+#         print(f"Authenticated User: {user_id}")
+#         print(f"Role: {role}")
+
+
+#         # ----------------------------------------------------
+#         # 8. Validate role
+#         # ----------------------------------------------------
+
+#         if role not in PERMISSIONS:
+
+#             print(f"Unknown role: {role}")
+
+#             return generate_policy(
+#                 "Deny",
+#                 event["methodArn"]
+#             )
+
+
+#         # ----------------------------------------------------
+#         # 9. Get HTTP method and API path
+#         # ----------------------------------------------------
+
+#         method = get_http_method(event["methodArn"])
+#         path = get_path(event["methodArn"])
+
+#         print(f"Method: {method}")
+#         print(f"Path: {path}")
+
+
+#         # ----------------------------------------------------
+#         # 10. Check role permissions
+#         # ----------------------------------------------------
+
+#         if is_allowed(role, method, path):
+
+#             print("Authorization successful")
+
+#             return generate_policy(
+#                 "Allow",
+#                 event["methodArn"],
+#                 principal_id=str(user_id),
+#                 context={
+#                     "user_id": str(user_id),
+#                     "role": role
+#                 }
+#             )
+
+
+#         # ----------------------------------------------------
+#         # 11. Permission denied
+#         # ----------------------------------------------------
+
+#         print("Authorization denied")
+
+#         return generate_policy(
+#             "Deny",
+#             event["methodArn"],
+#             principal_id=str(user_id)
+#         )
+
+
+#     # ========================================================
+#     # Error Handling
+#     # ========================================================
+
+#     except Exception as e:
+
+#         print(f"Authorization error: {str(e)}")
+
+#         return generate_policy(
+#             "Deny",
+#             event["methodArn"]
+#         )
+
+
+# # ============================================================
+# # Get HTTP Method
+# # ============================================================
+
+# def get_http_method(method_arn):
+
+#     parts = method_arn.split("/")
+
+#     return parts[2]
+
+
+# # ============================================================
+# # Get API Path
+# # ============================================================
+
+# def get_path(method_arn):
+
+#     parts = method_arn.split("/")
+
+#     path_parts = parts[3:]
+
+#     if not path_parts:
+
+#         return "/"
+
+#     return "/" + "/".join(path_parts)
+
+
+# # ============================================================
+# # Check Permission
+# # ============================================================
+
+# def is_allowed(role, method, actual_path):
+
+#     allowed_paths = PERMISSIONS.get(role, {}).get(method, [])
+
+#     for allowed_path in allowed_paths:
+
+#         # Convert:
+#         # /products/{id}
+#         #
+#         # Into:
+#         # /products/[^/]+
+
+#         pattern = re.sub(
+#             r"\{[^}]+\}",
+#             r"[^/]+",
+#             allowed_path
+#         )
+
+#         pattern = f"^{pattern}$"
+
+#         if re.match(pattern, actual_path):
+
+#             return True
+
+#     return False
+
+
+# # ============================================================
+# # Generate IAM Policy
+# # ============================================================
+
+# def generate_policy(
+#     effect,
+#     resource,
+#     principal_id="cloudmart-user",
+#     context=None
+# ):
+
+#     policy = {
+
+#         "principalId": principal_id,
+
+#         "policyDocument": {
+
+#             "Version": "2012-10-17",
+
+#             "Statement": [
+
+#                 {
+
+#                     "Action": "execute-api:Invoke",
+
+#                     "Effect": effect,
+
+#                     "Resource": resource
+
+#                 }
+
+#             ]
+#         }
+#     }
+
+
+#     # Add user information to API Gateway context
+
+#     if context:
+
+#         policy["context"] = context
+
+
+#     return policy
 import os
 import re
 import boto3
@@ -470,7 +885,7 @@ def lambda_handler(event, context):
 
 
         # ----------------------------------------------------
-        # 2. Validate Bearer token format
+        # 2. Validate Bearer token
         # ----------------------------------------------------
 
         if not authorization.startswith("Bearer "):
@@ -493,36 +908,18 @@ def lambda_handler(event, context):
                 event["methodArn"]
             )
 
-
-        # ----------------------------------------------------
-        # 3. Get user_id from query parameter
-        # ----------------------------------------------------
-
-        query_parameters = event.get("queryStringParameters") or {}
-
-        user_id = query_parameters.get("user_id")
-
-        if not user_id:
-
-            print("No user_id provided")
-
-            return generate_policy(
-                "Deny",
-                event["methodArn"]
-            )
-
-        print(f"User ID: {user_id}")
+        print("Authorization token received")
 
 
         # ----------------------------------------------------
-        # 4. Connect to database
+        # 3. Connect to database
         # ----------------------------------------------------
 
         connection = get_connection()
 
 
         # ----------------------------------------------------
-        # 5. Find user using user_id + token
+        # 4. Find user using token
         # ----------------------------------------------------
 
         try:
@@ -532,14 +929,13 @@ def lambda_handler(event, context):
                 sql = """
                     SELECT user_id, role
                     FROM Customers
-                    WHERE user_id = %s
-                    AND token = %s
+                    WHERE Token = %s
                     LIMIT 1
                 """
 
                 cursor.execute(
                     sql,
-                    (user_id, token)
+                    (token,)
                 )
 
                 user = cursor.fetchone()
@@ -550,12 +946,12 @@ def lambda_handler(event, context):
 
 
         # ----------------------------------------------------
-        # 6. Validate user_id + token
+        # 5. Validate token
         # ----------------------------------------------------
 
         if not user:
 
-            print("Invalid user_id or token")
+            print("Invalid token")
 
             return generate_policy(
                 "Deny",
@@ -564,9 +960,10 @@ def lambda_handler(event, context):
 
 
         # ----------------------------------------------------
-        # 7. Get user's role
+        # 6. Get user_id and role from database
         # ----------------------------------------------------
 
+        user_id = user["user_id"]
         role = user["role"]
 
         print(f"Authenticated User: {user_id}")
@@ -574,7 +971,7 @@ def lambda_handler(event, context):
 
 
         # ----------------------------------------------------
-        # 8. Validate role
+        # 7. Validate role
         # ----------------------------------------------------
 
         if role not in PERMISSIONS:
@@ -588,7 +985,7 @@ def lambda_handler(event, context):
 
 
         # ----------------------------------------------------
-        # 9. Get HTTP method and API path
+        # 8. Get HTTP method and API path
         # ----------------------------------------------------
 
         method = get_http_method(event["methodArn"])
@@ -599,7 +996,7 @@ def lambda_handler(event, context):
 
 
         # ----------------------------------------------------
-        # 10. Check role permissions
+        # 9. Check role permissions
         # ----------------------------------------------------
 
         if is_allowed(role, method, path):
@@ -618,7 +1015,7 @@ def lambda_handler(event, context):
 
 
         # ----------------------------------------------------
-        # 11. Permission denied
+        # 10. Permission denied
         # ----------------------------------------------------
 
         print("Authorization denied")
@@ -738,12 +1135,8 @@ def generate_policy(
         }
     }
 
-
-    # Add user information to API Gateway context
-
     if context:
 
         policy["context"] = context
-
 
     return policy
