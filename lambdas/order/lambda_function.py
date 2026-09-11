@@ -3632,6 +3632,1605 @@
 #             default=str
 #         )
 #     }
+# import os
+# import json
+# from decimal import Decimal, InvalidOperation
+
+# import boto3
+# import pymysql
+
+
+# # ------------------------------------------------------------
+# # Environment variables
+# # ------------------------------------------------------------
+
+# DB_HOST_PARAMETER = os.environ["DB_HOST_PARAMETER"]
+# DB_PORT_PARAMETER = os.environ["DB_PORT_PARAMETER"]
+# DB_NAME_PARAMETER = os.environ["DB_NAME_PARAMETER"]
+# DB_USER_PARAMETER = os.environ["DB_USER_PARAMETER"]
+# DB_PASSWORD_PARAMETER = os.environ["DB_PASSWORD_PARAMETER"]
+
+# EVENT_BUS_NAME = os.environ["EVENT_BUS_NAME"]
+
+
+# # ------------------------------------------------------------
+# # AWS clients
+# # ------------------------------------------------------------
+
+# ssm = boto3.client("ssm")
+# events = boto3.client("events")
+
+
+# # ------------------------------------------------------------
+# # Get SSM parameter
+# # ------------------------------------------------------------
+
+# def get_ssm_parameter(parameter_name):
+
+#     response = ssm.get_parameter(
+#         Name=parameter_name,
+#         WithDecryption=True
+#     )
+
+#     return response["Parameter"]["Value"]
+
+
+# # ------------------------------------------------------------
+# # Database connection
+# # ------------------------------------------------------------
+
+# def get_connection():
+
+#     host = get_ssm_parameter(DB_HOST_PARAMETER)
+#     port = int(get_ssm_parameter(DB_PORT_PARAMETER))
+#     database = get_ssm_parameter(DB_NAME_PARAMETER)
+#     user = get_ssm_parameter(DB_USER_PARAMETER)
+#     password = get_ssm_parameter(DB_PASSWORD_PARAMETER)
+
+#     return pymysql.connect(
+#         host=host,
+#         port=port,
+#         user=user,
+#         password=password,
+#         database=database,
+#         cursorclass=pymysql.cursors.DictCursor,
+#         autocommit=False
+#     )
+
+
+# # ------------------------------------------------------------
+# # Publish EventBridge event
+# # ------------------------------------------------------------
+
+# def publish_event(detail_type, detail):
+
+#     try:
+
+#         result = events.put_events(
+#             Entries=[
+#                 {
+#                     "EventBusName": EVENT_BUS_NAME,
+#                     "Source": "cloudmart",
+#                     "DetailType": detail_type,
+#                     "Detail": json.dumps(
+#                         detail,
+#                         default=str
+#                     )
+#                 }
+#             ]
+#         )
+
+#         if result.get("FailedEntryCount", 0) > 0:
+
+#             print(
+#                 f"EventBridge failed to publish: {detail_type}"
+#             )
+
+#         else:
+
+#             print(
+#                 f"EventBridge event published: {detail_type}"
+#             )
+
+#     except Exception as e:
+
+#         print(
+#             f"EventBridge error for {detail_type}: {str(e)}"
+#         )
+
+
+# # ------------------------------------------------------------
+# # Lambda handler
+# # ------------------------------------------------------------
+
+# def lambda_handler(event, context):
+
+#     print("HTTP METHOD:", event.get("httpMethod"))
+#     print("PATH PARAMETERS:", event.get("pathParameters"))
+#     print("BODY:", event.get("body"))
+
+#     connection = None
+
+#     try:
+
+#         connection = get_connection()
+
+#         http_method = event.get("httpMethod")
+
+#         path_parameters = event.get("pathParameters") or {}
+#         order_id = path_parameters.get("orderId")
+
+#         body = event.get("body")
+
+#         if body:
+#             body = json.loads(body)
+
+
+#         # ====================================================
+#         # GET /orders
+#         # ====================================================
+
+#         if http_method == "GET" and not order_id:
+
+#             query_parameters = (
+#                 event.get("queryStringParameters") or {}
+#             )
+
+#             customer_id = query_parameters.get("customerId")
+
+#             query = """
+#                 SELECT
+#                     order_id AS OrderID,
+#                     customer_id AS CustomerID,
+#                     total_amount AS TotalAmount,
+#                     status AS Status,
+#                     is_deleted AS IsDeleted,
+#                     created_at AS CreatedAt,
+#                     changed_at AS ChangedAt,
+#                     cancelled_at AS CancelledAt,
+#                     cancel_reason AS CancelReason
+#                 FROM Orders
+#                 WHERE is_deleted = FALSE
+#             """
+
+#             params = []
+
+#             if customer_id is not None:
+
+#                 try:
+#                     customer_id = int(customer_id)
+
+#                 except (ValueError, TypeError):
+
+#                     return response(
+#                         400,
+#                         {
+#                             "message":
+#                             "customerId must be a valid integer"
+#                         }
+#                     )
+
+#                 if customer_id <= 0:
+
+#                     return response(
+#                         400,
+#                         {
+#                             "message":
+#                             "customerId must be a positive integer"
+#                         }
+#                     )
+
+#                 query += " AND customer_id = %s"
+#                 params.append(customer_id)
+
+#             query += " ORDER BY created_at DESC"
+
+#             with connection.cursor() as cursor:
+
+#                 cursor.execute(
+#                     query,
+#                     params
+#                 )
+
+#                 orders = cursor.fetchall()
+
+#             connection.commit()
+
+#             return response(
+#                 200,
+#                 orders
+#             )
+
+
+#         # ====================================================
+#         # GET /orders/{orderId}
+#         # ====================================================
+
+#         if http_method == "GET" and order_id:
+
+#             with connection.cursor() as cursor:
+
+#                 cursor.execute(
+#                     """
+#                     SELECT
+#                         order_id AS OrderID,
+#                         customer_id AS CustomerID,
+#                         total_amount AS TotalAmount,
+#                         status AS Status,
+#                         is_deleted AS IsDeleted,
+#                         created_at AS CreatedAt,
+#                         changed_at AS ChangedAt,
+#                         cancelled_at AS CancelledAt,
+#                         cancel_reason AS CancelReason
+#                     FROM Orders
+#                     WHERE order_id = %s
+#                       AND is_deleted = FALSE
+#                     """,
+#                     (order_id,)
+#                 )
+
+#                 order = cursor.fetchone()
+
+#                 if not order:
+
+#                     connection.rollback()
+
+#                     return response(
+#                         404,
+#                         {
+#                             "message":
+#                             "Order not found"
+#                         }
+#                     )
+
+#                 cursor.execute(
+#                     """
+#                     SELECT
+#                         order_item_id AS OrderItemID,
+#                         product_id AS ProductID,
+#                         product_name AS ProductName,
+#                         quantity AS Quantity,
+#                         price AS Price
+#                     FROM Orders_Items
+#                     WHERE order_id = %s
+#                     """,
+#                     (order_id,)
+#                 )
+
+#                 order["Items"] = cursor.fetchall()
+
+#             connection.commit()
+
+#             return response(
+#                 200,
+#                 order
+#             )
+
+
+#         # ====================================================
+#         # POST /orders
+#         #
+#         # Creates/reuses customer, creates order,
+#         # creates items, updates stock and creates
+#         # initial history record.
+#         # ====================================================
+
+#         if http_method == "POST":
+
+#             if not body:
+
+#                 return response(
+#                     400,
+#                     {
+#                         "message":
+#                         "Request body is required"
+#                     }
+#                 )
+
+#             customer = body.get("Customer")
+#             items = body.get("Items")
+
+#             if not isinstance(customer, dict):
+
+#                 return response(
+#                     400,
+#                     {
+#                         "message":
+#                         "Customer is required"
+#                     }
+#                 )
+
+#             if not isinstance(items, list) or not items:
+
+#                 return response(
+#                     400,
+#                     {
+#                         "message":
+#                         "Items must be a non-empty list"
+#                     }
+#                 )
+
+#             customer_name = customer.get("Name")
+#             customer_email = customer.get("Email")
+#             customer_phone = customer.get("Phone")
+
+#             if (
+#                 not isinstance(customer_name, str)
+#                 or not customer_name.strip()
+#             ):
+
+#                 return response(
+#                     400,
+#                     {
+#                         "message":
+#                         "Customer Name is required"
+#                     }
+#                 )
+
+#             if (
+#                 not isinstance(customer_email, str)
+#                 or not customer_email.strip()
+#             ):
+
+#                 return response(
+#                     400,
+#                     {
+#                         "message":
+#                         "Customer Email is required"
+#                     }
+#                 )
+
+#             customer_name = customer_name.strip()
+#             customer_email = customer_email.strip()
+
+#             with connection.cursor() as cursor:
+
+#                 # ------------------------------------------------
+#                 # Find existing customer by email
+#                 # ------------------------------------------------
+
+#                 cursor.execute(
+#                     """
+#                     SELECT customer_id
+#                     FROM Customers
+#                     WHERE email = %s
+#                     """,
+#                     (customer_email,)
+#                 )
+
+#                 existing_customer = cursor.fetchone()
+
+#                 if existing_customer:
+
+#                     customer_id = existing_customer[
+#                         "customer_id"
+#                     ]
+
+#                 else:
+
+#                     cursor.execute(
+#                         """
+#                         INSERT INTO Customers
+#                         (name, email, phone)
+#                         VALUES (%s, %s, %s)
+#                         """,
+#                         (
+#                             customer_name,
+#                             customer_email,
+#                             customer_phone
+#                         )
+#                     )
+
+#                     customer_id = cursor.lastrowid
+
+
+#                 total_amount = Decimal("0.00")
+#                 item_rows = []
+
+#                 # ------------------------------------------------
+#                 # Validate items and combine duplicate ProductIDs
+#                 # ------------------------------------------------
+
+#                 combined_items = {}
+
+#                 for item in items:
+
+#                     if not isinstance(item, dict):
+
+#                         connection.rollback()
+
+#                         return response(
+#                             400,
+#                             {
+#                                 "message":
+#                                 "Each item must be an object"
+#                             }
+#                         )
+
+#                     product_id = item.get("ProductID")
+#                     quantity = item.get("Quantity")
+
+#                     if (
+#                         isinstance(product_id, bool)
+#                         or not isinstance(product_id, int)
+#                         or product_id <= 0
+#                     ):
+
+#                         connection.rollback()
+
+#                         return response(
+#                             400,
+#                             {
+#                                 "message":
+#                                 "ProductID must be a positive integer"
+#                             }
+#                         )
+
+#                     if (
+#                         isinstance(quantity, bool)
+#                         or not isinstance(quantity, int)
+#                         or quantity <= 0
+#                     ):
+
+#                         connection.rollback()
+
+#                         return response(
+#                             400,
+#                             {
+#                                 "message":
+#                                 "Quantity must be a positive integer"
+#                             }
+#                         )
+
+#                     # Combine repeated ProductIDs into one quantity
+#                     if product_id in combined_items:
+#                         combined_items[product_id] += quantity
+#                     else:
+#                         combined_items[product_id] = quantity
+
+#                 # ------------------------------------------------
+#                 # Validate products and calculate total
+#                 # ------------------------------------------------
+
+#                 for product_id, quantity in combined_items.items():
+
+#                     cursor.execute(
+#                         """
+#                         SELECT
+#                             product_id,
+#                             name,
+#                             price,
+#                             stock
+#                         FROM Products
+#                         WHERE product_id = %s
+#                           AND status = 'ACTIVE'
+#                         FOR UPDATE
+#                         """,
+#                         (product_id,)
+#                     )
+
+#                     product = cursor.fetchone()
+
+#                     # ------------------------------------------------
+#                     # Product does not exist
+#                     # ------------------------------------------------
+
+#                     if not product:
+
+#                         connection.rollback()
+
+#                         publish_event(
+#                             "OrderFailed",
+#                             {
+#                                 "customer_id": customer_id,
+#                                 "product_id": product_id,
+#                                 "requested_quantity": quantity,
+#                                 "reason":
+#                                 "Product not found"
+#                             }
+#                         )
+
+#                         return response(
+#                             404,
+#                             {
+#                                 "message": "Product not found",
+#                                 "ProductID": product_id
+#                             }
+#                         )
+
+#                     # ------------------------------------------------
+#                     # Insufficient stock
+#                     # ------------------------------------------------
+
+#                     if product["stock"] < quantity:
+
+#                         connection.rollback()
+
+#                         publish_event(
+#                             "OrderFailed",
+#                             {
+#                                 "customer_id": customer_id,
+#                                 "product_id": product_id,
+#                                 "requested_quantity": quantity,
+#                                 "available_stock":
+#                                 product["stock"],
+#                                 "reason":
+#                                 "Insufficient stock"
+#                             }
+#                         )
+
+#                         return response(
+#                             400,
+#                             {
+#                                 "message": "Insufficient stock",
+#                                 "ProductID": product_id,
+#                                 "AvailableStock": product["stock"]
+#                             }
+#                         )
+
+#                     price = Decimal(
+#                         str(product["price"])
+#                     )
+
+#                     total_amount += price * quantity
+
+#                     # Only one order-item row per unique ProductID
+#                     item_rows.append(
+#                         {
+#                             "product_id": product_id,
+#                             "product_name": product["name"],
+#                             "quantity": quantity,
+#                             "price": price
+#                         }
+#                     )
+
+#                 # ------------------------------------------------
+#                 # Create order
+#                 # ------------------------------------------------
+
+#                 cursor.execute(
+#                     """
+#                     INSERT INTO Orders
+#                     (
+#                         customer_id,
+#                         total_amount,
+#                         status,
+#                         is_deleted
+#                     )
+#                     VALUES
+#                     (
+#                         %s,
+#                         %s,
+#                         'PENDING',
+#                         FALSE
+#                     )
+#                     """,
+#                     (
+#                         customer_id,
+#                         total_amount
+#                     )
+#                 )
+
+#                 new_order_id = cursor.lastrowid
+
+
+#                 # ------------------------------------------------
+#                 # Create order items and reduce stock
+#                 # ------------------------------------------------
+
+#                 for item in item_rows:
+
+#                     cursor.execute(
+#                         """
+#                         INSERT INTO Orders_Items
+#                         (
+#                             order_id,
+#                             product_id,
+#                             product_name,
+#                             quantity,
+#                             price
+#                         )
+#                         VALUES
+#                         (
+#                             %s,
+#                             %s,
+#                             %s,
+#                             %s,
+#                             %s
+#                         )
+#                         """,
+#                         (
+#                             new_order_id,
+#                             item["product_id"],
+#                             item["product_name"],
+#                             item["quantity"],
+#                             item["price"]
+#                         )
+#                     )
+
+
+#                     cursor.execute(
+#                         """
+#                         UPDATE Products
+#                         SET stock = stock - %s
+#                         WHERE product_id = %s
+#                           AND stock >= %s
+#                           AND status = 'ACTIVE'
+#                         """,
+#                         (
+#                             item["quantity"],
+#                             item["product_id"],
+#                             item["quantity"]
+#                         )
+#                     )
+
+
+#                     if cursor.rowcount == 0:
+
+#                         connection.rollback()
+
+#                         publish_event(
+#                             "OrderFailed",
+#                             {
+#                                 "customer_id":
+#                                 customer_id,
+
+#                                 "product_id":
+#                                 item["product_id"],
+
+#                                 "requested_quantity":
+#                                 item["quantity"],
+
+#                                 "reason":
+#                                 "Unable to update stock"
+#                             }
+#                         )
+
+#                         return response(
+#                             400,
+#                             {
+#                                 "message":
+#                                 "Unable to update stock",
+#                                 "ProductID":
+#                                 item["product_id"]
+#                             }
+#                         )
+
+
+#                 # ------------------------------------------------
+#                 # Initial order history
+#                 # ------------------------------------------------
+
+#                 cursor.execute(
+#                     """
+#                     INSERT INTO Orders_History
+#                     (
+#                         order_id,
+#                         customer_id,
+#                         total_amount,
+#                         status,
+#                         is_deleted
+#                     )
+#                     VALUES
+#                     (
+#                         %s,
+#                         %s,
+#                         %s,
+#                         'PENDING',
+#                         FALSE
+#                     )
+#                     """,
+#                     (
+#                         new_order_id,
+#                         customer_id,
+#                         total_amount
+#                     )
+#                 )
+
+
+#             # ------------------------------------------------
+#             # Commit order transaction
+#             # ------------------------------------------------
+
+#             connection.commit()
+
+
+#             # ------------------------------------------------
+#             # Publish OrderCreated event
+#             # ------------------------------------------------
+
+#             publish_event(
+#                 "OrderCreated",
+#                 {
+#                     "order_id":
+#                     new_order_id,
+
+#                     "customer_id":
+#                     customer_id,
+
+#                     "total_amount":
+#                     total_amount,
+
+#                     "status":
+#                     "PENDING"
+#                 }
+#             )
+
+
+#             return response(
+#                 201,
+#                 {
+#                     "message":
+#                     "Order created",
+
+#                     "OrderID":
+#                     new_order_id,
+
+#                     "CustomerID":
+#                     customer_id,
+
+#                     "TotalAmount":
+#                     total_amount
+#                 }
+#             )
+
+
+#         # ====================================================
+#         # PATCH /orders/{orderId}
+#         #
+#         # Supports partial updates, cancellation
+#         # and soft delete.
+#         # ====================================================
+
+#         if http_method == "PATCH" and order_id:
+
+#             if not body:
+
+#                 return response(
+#                     400,
+#                     {
+#                         "message":
+#                         "Request body is required"
+#                     }
+#                 )
+
+
+#             allowed_fields = {
+#                 "CustomerID",
+#                 "TotalAmount",
+#                 "Status",
+#                 "IsDeleted",
+#                 "CancelReason"
+#             }
+
+
+#             invalid_fields = [
+#                 field
+#                 for field in body
+#                 if field not in allowed_fields
+#             ]
+
+
+#             if invalid_fields:
+
+#                 return response(
+#                     400,
+#                     {
+#                         "message":
+#                         "Invalid fields",
+
+#                         "fields":
+#                         invalid_fields
+#                     }
+#                 )
+
+
+#             with connection.cursor() as cursor:
+
+#                 cursor.execute(
+#                     """
+#                     SELECT
+#                         order_id,
+#                         customer_id,
+#                         total_amount,
+#                         status,
+#                         is_deleted,
+#                         cancelled_at,
+#                         cancel_reason
+#                     FROM Orders
+#                     WHERE order_id = %s
+#                     FOR UPDATE
+#                     """,
+#                     (order_id,)
+#                 )
+
+#                 existing_order = cursor.fetchone()
+
+
+#                 if not existing_order:
+
+#                     connection.rollback()
+
+#                     return response(
+#                         404,
+#                         {
+#                             "message":
+#                             "Order not found"
+#                         }
+#                     )
+
+
+#                 if existing_order["is_deleted"]:
+
+#                     connection.rollback()
+
+#                     return response(
+#                         404,
+#                         {
+#                             "message":
+#                             "Order is already deleted"
+#                         }
+#                     )
+
+
+#                 customer_id = existing_order["customer_id"]
+#                 total_amount = existing_order["total_amount"]
+
+#                 old_status = existing_order["status"]
+#                 status = existing_order["status"]
+
+#                 is_deleted = existing_order["is_deleted"]
+#                 cancel_reason = existing_order["cancel_reason"]
+
+
+#                 # ------------------------------------------------
+#                 # Customer ID
+#                 # ------------------------------------------------
+
+#                 if "CustomerID" in body:
+
+#                     customer_id = body["CustomerID"]
+
+#                     if (
+#                         isinstance(customer_id, bool)
+#                         or not isinstance(customer_id, int)
+#                         or customer_id <= 0
+#                     ):
+
+#                         connection.rollback()
+
+#                         return response(
+#                             400,
+#                             {
+#                                 "message":
+#                                 "CustomerID must be a positive integer"
+#                             }
+#                         )
+
+
+#                     cursor.execute(
+#                         """
+#                         SELECT customer_id
+#                         FROM Customers
+#                         WHERE customer_id = %s
+#                         """,
+#                         (customer_id,)
+#                     )
+
+
+#                     if not cursor.fetchone():
+
+#                         connection.rollback()
+
+#                         return response(
+#                             404,
+#                             {
+#                                 "message":
+#                                 "Customer not found"
+#                             }
+#                         )
+
+
+#                 # ------------------------------------------------
+#                 # Total amount
+#                 # ------------------------------------------------
+
+#                 if "TotalAmount" in body:
+
+#                     try:
+
+#                         total_amount = Decimal(
+#                             str(body["TotalAmount"])
+#                         )
+
+#                     except (
+#                         ValueError,
+#                         TypeError,
+#                         InvalidOperation
+#                     ):
+
+#                         connection.rollback()
+
+#                         return response(
+#                             400,
+#                             {
+#                                 "message":
+#                                 "TotalAmount must be a valid number"
+#                             }
+#                         )
+
+
+#                     if total_amount < 0:
+
+#                         connection.rollback()
+
+#                         return response(
+#                             400,
+#                             {
+#                                 "message":
+#                                 "TotalAmount cannot be negative"
+#                             }
+#                         )
+
+
+#                 # ------------------------------------------------
+#                 # Status
+#                 # ------------------------------------------------
+
+#                 if "Status" in body:
+
+#                     status = body["Status"]
+
+#                     if status not in (
+#                         "PENDING",
+#                         "CONFIRMED",
+#                         "COMPLETED",
+#                         "CANCELLED"
+#                     ):
+
+#                         connection.rollback()
+
+#                         return response(
+#                             400,
+#                             {
+#                                 "message":
+#                                 "Status must be one of PENDING, "
+#                                 "CONFIRMED, COMPLETED, CANCELLED"
+#                             }
+#                         )
+
+
+#                 # ------------------------------------------------
+#                 # Cancel reason
+#                 # ------------------------------------------------
+
+#                 if "CancelReason" in body:
+
+#                     cancel_reason = body["CancelReason"]
+
+
+#                 # ------------------------------------------------
+#                 # Soft delete
+#                 # ------------------------------------------------
+
+#                 if "IsDeleted" in body:
+
+#                     if not isinstance(
+#                         body["IsDeleted"],
+#                         bool
+#                     ):
+
+#                         connection.rollback()
+
+#                         return response(
+#                             400,
+#                             {
+#                                 "message":
+#                                 "IsDeleted must be true or false"
+#                             }
+#                         )
+
+#                     is_deleted = body["IsDeleted"]
+
+
+#                 # ------------------------------------------------
+#                 # Cancellation handling
+#                 # ------------------------------------------------
+
+#                 if (
+#                     status == "CANCELLED"
+#                     and old_status != "CANCELLED"
+#                 ):
+
+#                     cursor.execute(
+#                         """
+#                         UPDATE Orders
+#                         SET customer_id = %s,
+#                             total_amount = %s,
+#                             status = %s,
+#                             is_deleted = %s,
+#                             changed_at = CURRENT_TIMESTAMP,
+#                             cancelled_at = CURRENT_TIMESTAMP,
+#                             cancel_reason = %s
+#                         WHERE order_id = %s
+#                         """,
+#                         (
+#                             customer_id,
+#                             total_amount,
+#                             status,
+#                             is_deleted,
+#                             cancel_reason,
+#                             order_id
+#                         )
+#                     )
+
+#                 else:
+
+#                     cursor.execute(
+#                         """
+#                         UPDATE Orders
+#                         SET customer_id = %s,
+#                             total_amount = %s,
+#                             status = %s,
+#                             is_deleted = %s,
+#                             changed_at = CURRENT_TIMESTAMP,
+#                             cancel_reason = %s
+#                         WHERE order_id = %s
+#                         """,
+#                         (
+#                             customer_id,
+#                             total_amount,
+#                             status,
+#                             is_deleted,
+#                             cancel_reason,
+#                             order_id
+#                         )
+#                     )
+
+
+#                 # ------------------------------------------------
+#                 # Add history snapshot
+#                 # ------------------------------------------------
+
+#                 cursor.execute(
+#                     """
+#                     INSERT INTO Orders_History
+#                     (
+#                         order_id,
+#                         customer_id,
+#                         total_amount,
+#                         status,
+#                         is_deleted,
+#                         cancelled_at,
+#                         cancelled_reason
+#                     )
+#                     SELECT
+#                         order_id,
+#                         customer_id,
+#                         total_amount,
+#                         status,
+#                         is_deleted,
+#                         cancelled_at,
+#                         cancel_reason
+#                     FROM Orders
+#                     WHERE order_id = %s
+#                     """,
+#                     (order_id,)
+#                 )
+
+
+#             # ------------------------------------------------
+#             # Commit PATCH
+#             # ------------------------------------------------
+
+#             connection.commit()
+
+
+#             # ------------------------------------------------
+#             # Publish status change event
+#             # ------------------------------------------------
+
+#             if old_status != status:
+
+#                 publish_event(
+#                     "OrderStatusChanged",
+#                     {
+#                         "order_id":
+#                         int(order_id),
+
+#                         "old_status":
+#                         old_status,
+
+#                         "new_status":
+#                         status
+#                     }
+#                 )
+
+
+#                 # ------------------------------------------------
+#                 # Publish confirmation event
+#                 # ------------------------------------------------
+
+#                 if status == "CONFIRMED":
+
+#                     publish_event(
+#                         "OrderConfirmed",
+#                         {
+#                             "order_id":
+#                             int(order_id),
+
+#                             "old_status":
+#                             old_status,
+
+#                             "status":
+#                             "CONFIRMED"
+#                         }
+#                     )
+
+
+#             return response(
+#                 200,
+#                 {
+#                     "message":
+#                     "Order updated",
+
+#                     "OrderID":
+#                     int(order_id)
+#                 }
+#             )
+
+
+#         # ====================================================
+#         # PUT /orders/{orderId}
+#         #
+#         # Full update.
+#         # ====================================================
+
+#         if http_method == "PUT" and order_id:
+
+#             if not body:
+
+#                 return response(
+#                     400,
+#                     {
+#                         "message":
+#                         "Request body is required"
+#                     }
+#                 )
+
+
+#             required_fields = [
+#                 "CustomerID",
+#                 "TotalAmount",
+#                 "Status"
+#             ]
+
+
+#             missing_fields = [
+#                 field
+#                 for field in required_fields
+#                 if field not in body
+#             ]
+
+
+#             if missing_fields:
+
+#                 return response(
+#                     400,
+#                     {
+#                         "message":
+#                         "Missing required fields",
+
+#                         "fields":
+#                         missing_fields
+#                     }
+#                 )
+
+
+#             try:
+
+#                 customer_id = int(
+#                     body["CustomerID"]
+#                 )
+
+#                 total_amount = Decimal(
+#                     str(body["TotalAmount"])
+#                 )
+
+#             except (
+#                 ValueError,
+#                 TypeError,
+#                 InvalidOperation
+#             ):
+
+#                 return response(
+#                     400,
+#                     {
+#                         "message":
+#                         "Invalid CustomerID or TotalAmount"
+#                     }
+#                 )
+
+
+#             status = body["Status"]
+
+
+#             if customer_id <= 0:
+
+#                 return response(
+#                     400,
+#                     {
+#                         "message":
+#                         "CustomerID must be a positive integer"
+#                     }
+#                 )
+
+
+#             if total_amount < 0:
+
+#                 return response(
+#                     400,
+#                     {
+#                         "message":
+#                         "TotalAmount cannot be negative"
+#                     }
+#                 )
+
+
+#             if status not in (
+#                 "PENDING",
+#                 "CONFIRMED",
+#                 "COMPLETED",
+#                 "CANCELLED"
+#             ):
+
+#                 return response(
+#                     400,
+#                     {
+#                         "message":
+#                         "Invalid status"
+#                     }
+#                 )
+
+
+#             with connection.cursor() as cursor:
+
+#                 cursor.execute(
+#                     """
+#                     SELECT
+#                         order_id,
+#                         status
+#                     FROM Orders
+#                     WHERE order_id = %s
+#                       AND is_deleted = FALSE
+#                     FOR UPDATE
+#                     """,
+#                     (order_id,)
+#                 )
+
+#                 existing_order = cursor.fetchone()
+
+
+#                 if not existing_order:
+
+#                     connection.rollback()
+
+#                     return response(
+#                         404,
+#                         {
+#                             "message":
+#                             "Active order not found"
+#                         }
+#                     )
+
+
+#                 old_status = existing_order["status"]
+
+
+#                 cursor.execute(
+#                     """
+#                     UPDATE Orders
+#                     SET customer_id = %s,
+#                         total_amount = %s,
+#                         status = %s,
+#                         changed_at = CURRENT_TIMESTAMP,
+#                         cancelled_at =
+#                             CASE
+#                                 WHEN %s = 'CANCELLED'
+#                                 THEN COALESCE(
+#                                     cancelled_at,
+#                                     CURRENT_TIMESTAMP
+#                                 )
+#                                 ELSE cancelled_at
+#                             END
+#                     WHERE order_id = %s
+#                     """,
+#                     (
+#                         customer_id,
+#                         total_amount,
+#                         status,
+#                         status,
+#                         order_id
+#                     )
+#                 )
+
+
+#                 cursor.execute(
+#                     """
+#                     INSERT INTO Orders_History
+#                     (
+#                         order_id,
+#                         customer_id,
+#                         total_amount,
+#                         status,
+#                         is_deleted,
+#                         cancelled_at,
+#                         cancelled_reason
+#                     )
+#                     SELECT
+#                         order_id,
+#                         customer_id,
+#                         total_amount,
+#                         status,
+#                         is_deleted,
+#                         cancelled_at,
+#                         cancel_reason
+#                     FROM Orders
+#                     WHERE order_id = %s
+#                     """,
+#                     (order_id,)
+#                 )
+
+
+#             # ------------------------------------------------
+#             # Commit PUT
+#             # ------------------------------------------------
+
+#             connection.commit()
+
+
+#             # ------------------------------------------------
+#             # Publish status change event
+#             # ------------------------------------------------
+
+#             if old_status != status:
+
+#                 publish_event(
+#                     "OrderStatusChanged",
+#                     {
+#                         "order_id":
+#                         int(order_id),
+
+#                         "old_status":
+#                         old_status,
+
+#                         "new_status":
+#                         status
+#                     }
+#                 )
+
+
+#                 if status == "CONFIRMED":
+
+#                     publish_event(
+#                         "OrderConfirmed",
+#                         {
+#                             "order_id":
+#                             int(order_id),
+
+#                             "old_status":
+#                             old_status,
+
+#                             "status":
+#                             "CONFIRMED"
+#                         }
+#                     )
+
+
+#             return response(
+#                 200,
+#                 {
+#                     "message":
+#                     "Order updated",
+
+#                     "OrderID":
+#                     int(order_id)
+#                 }
+#             )
+
+
+#         # ====================================================
+#         # DELETE /orders/{orderId}
+#         #
+#         # Soft delete through is_deleted.
+#         # ====================================================
+
+#         if http_method == "DELETE" and order_id:
+
+#             with connection.cursor() as cursor:
+
+#                 cursor.execute(
+#                     """
+#                     SELECT order_id
+#                     FROM Orders
+#                     WHERE order_id = %s
+#                       AND is_deleted = FALSE
+#                     FOR UPDATE
+#                     """,
+#                     (order_id,)
+#                 )
+
+
+#                 if not cursor.fetchone():
+
+#                     connection.rollback()
+
+#                     return response(
+#                         404,
+#                         {
+#                             "message":
+#                             "Active order not found"
+#                         }
+#                     )
+
+
+#                 cursor.execute(
+#                     """
+#                     UPDATE Orders
+#                     SET is_deleted = TRUE,
+#                         changed_at = CURRENT_TIMESTAMP
+#                     WHERE order_id = %s
+#                     """,
+#                     (order_id,)
+#                 )
+
+
+#                 cursor.execute(
+#                     """
+#                     INSERT INTO Orders_History
+#                     (
+#                         order_id,
+#                         customer_id,
+#                         total_amount,
+#                         status,
+#                         is_deleted,
+#                         cancelled_at,
+#                         cancelled_reason
+#                     )
+#                     SELECT
+#                         order_id,
+#                         customer_id,
+#                         total_amount,
+#                         status,
+#                         is_deleted,
+#                         cancelled_at,
+#                         cancel_reason
+#                     FROM Orders
+#                     WHERE order_id = %s
+#                     """,
+#                     (order_id,)
+#                 )
+
+
+#             connection.commit()
+
+
+#             return response(
+#                 200,
+#                 {
+#                     "message":
+#                     "Order soft deleted",
+
+#                     "OrderID":
+#                     int(order_id)
+#                 }
+#             )
+
+
+#         connection.rollback()
+
+#         return response(
+#             400,
+#             {
+#                 "message":
+#                 "Unsupported operation"
+#             }
+#         )
+
+
+#     except json.JSONDecodeError:
+
+#         if connection:
+#             connection.rollback()
+
+#         return response(
+#             400,
+#             {
+#                 "message":
+#                 "Invalid JSON request body"
+#             }
+#         )
+
+
+#     except pymysql.err.IntegrityError as e:
+
+#         if connection:
+#             connection.rollback()
+
+#         print(
+#             f"Database integrity error: {str(e)}"
+#         )
+
+#         return response(
+#             400,
+#             {
+#                 "message":
+#                 "Database constraint violation"
+#             }
+#         )
+
+
+#     except pymysql.MySQLError as e:
+
+#         if connection:
+#             connection.rollback()
+
+#         print(
+#             f"Database error: {str(e)}"
+#         )
+
+#         return response(
+#             500,
+#             {
+#                 "message":
+#                 "Database error"
+#             }
+#         )
+
+
+#     except Exception as e:
+
+#         if connection:
+#             connection.rollback()
+
+#         print(
+#             f"Unexpected error: {str(e)}"
+#         )
+
+#         return response(
+#             500,
+#             {
+#                 "message":
+#                 "Internal server error"
+#             }
+#         )
+
+
+#     finally:
+
+#         if connection:
+#             connection.close()
+
+
+# # ------------------------------------------------------------
+# # API response
+# # ------------------------------------------------------------
+
+# def response(status_code, body):
+
+#     return {
+#         "statusCode": status_code,
+
+#         "headers": {
+#             "Content-Type":
+#             "application/json"
+#         },
+
+#         "body": json.dumps(
+#             body,
+#             default=str
+#         )
+#     }
 import os
 import json
 from decimal import Decimal, InvalidOperation
@@ -3743,6 +5342,28 @@ def publish_event(detail_type, detail):
 # Lambda handler
 # ------------------------------------------------------------
 
+def get_authenticated_user(event):
+    """Get the authenticated user supplied by the API Gateway authorizer."""
+
+    authorizer = (
+        event.get("requestContext", {}).get("authorizer", {})
+        or {}
+    )
+
+    user_id = authorizer.get("user_id")
+    role = authorizer.get("role")
+
+    if not user_id:
+        return None, None
+
+    try:
+        user_id = int(user_id)
+    except (ValueError, TypeError):
+        return None, None
+
+    return user_id, role
+
+
 def lambda_handler(event, context):
 
     print("HTTP METHOD:", event.get("httpMethod"))
@@ -3765,18 +5386,33 @@ def lambda_handler(event, context):
         if body:
             body = json.loads(body)
 
+        user_id, role = get_authenticated_user(event)
+
+        if not user_id:
+            return response(
+                401,
+                {
+                    "message": "Authenticated user not found"
+                }
+            )
+
+        if role not in ("CUSTOMER", "ADMIN"):
+            return response(
+                403,
+                {
+                    "message": "Invalid user role"
+                }
+            )
+
 
         # ====================================================
         # GET /orders
         # ====================================================
+        # CUSTOMER -> only their own orders
+        # ADMIN    -> all orders
+        # ====================================================
 
         if http_method == "GET" and not order_id:
-
-            query_parameters = (
-                event.get("queryStringParameters") or {}
-            )
-
-            customer_id = query_parameters.get("customerId")
 
             query = """
                 SELECT
@@ -3795,91 +5431,80 @@ def lambda_handler(event, context):
 
             params = []
 
-            if customer_id is not None:
-
-                try:
-                    customer_id = int(customer_id)
-
-                except (ValueError, TypeError):
-
-                    return response(
-                        400,
-                        {
-                            "message":
-                            "customerId must be a valid integer"
-                        }
-                    )
-
-                if customer_id <= 0:
-
-                    return response(
-                        400,
-                        {
-                            "message":
-                            "customerId must be a positive integer"
-                        }
-                    )
-
+            if role == "CUSTOMER":
                 query += " AND customer_id = %s"
-                params.append(customer_id)
+                params.append(user_id)
 
             query += " ORDER BY created_at DESC"
 
             with connection.cursor() as cursor:
-
-                cursor.execute(
-                    query,
-                    params
-                )
-
+                cursor.execute(query, params)
                 orders = cursor.fetchall()
 
             connection.commit()
 
-            return response(
-                200,
-                orders
-            )
+            return response(200, orders)
 
 
         # ====================================================
         # GET /orders/{orderId}
+        # ====================================================
+        # CUSTOMER -> only their own order
+        # ADMIN    -> any order
         # ====================================================
 
         if http_method == "GET" and order_id:
 
             with connection.cursor() as cursor:
 
-                cursor.execute(
-                    """
-                    SELECT
-                        order_id AS OrderID,
-                        customer_id AS CustomerID,
-                        total_amount AS TotalAmount,
-                        status AS Status,
-                        is_deleted AS IsDeleted,
-                        created_at AS CreatedAt,
-                        changed_at AS ChangedAt,
-                        cancelled_at AS CancelledAt,
-                        cancel_reason AS CancelReason
-                    FROM Orders
-                    WHERE order_id = %s
-                      AND is_deleted = FALSE
-                    """,
-                    (order_id,)
-                )
+                if role == "CUSTOMER":
+                    cursor.execute(
+                        """
+                        SELECT
+                            order_id AS OrderID,
+                            customer_id AS CustomerID,
+                            total_amount AS TotalAmount,
+                            status AS Status,
+                            is_deleted AS IsDeleted,
+                            created_at AS CreatedAt,
+                            changed_at AS ChangedAt,
+                            cancelled_at AS CancelledAt,
+                            cancel_reason AS CancelReason
+                        FROM Orders
+                        WHERE order_id = %s
+                          AND customer_id = %s
+                          AND is_deleted = FALSE
+                        """,
+                        (order_id, user_id)
+                    )
+                else:
+                    cursor.execute(
+                        """
+                        SELECT
+                            order_id AS OrderID,
+                            customer_id AS CustomerID,
+                            total_amount AS TotalAmount,
+                            status AS Status,
+                            is_deleted AS IsDeleted,
+                            created_at AS CreatedAt,
+                            changed_at AS ChangedAt,
+                            cancelled_at AS CancelledAt,
+                            cancel_reason AS CancelReason
+                        FROM Orders
+                        WHERE order_id = %s
+                          AND is_deleted = FALSE
+                        """,
+                        (order_id,)
+                    )
 
                 order = cursor.fetchone()
 
                 if not order:
-
                     connection.rollback()
-
                     return response(
                         404,
                         {
-                            "message":
-                            "Order not found"
+                            "message": "Order not found"
                         }
                     )
 
@@ -3901,128 +5526,37 @@ def lambda_handler(event, context):
 
             connection.commit()
 
-            return response(
-                200,
-                order
-            )
+            return response(200, order)
 
 
         # ====================================================
         # POST /orders
-        #
-        # Creates/reuses customer, creates order,
-        # creates items, updates stock and creates
-        # initial history record.
+        # ====================================================
+        # Customer information is NOT accepted from the client.
+        # The authenticated user_id from the authorizer is used.
         # ====================================================
 
         if http_method == "POST":
 
             if not body:
-
                 return response(
                     400,
                     {
-                        "message":
-                        "Request body is required"
+                        "message": "Request body is required"
                     }
                 )
 
-            customer = body.get("Customer")
             items = body.get("Items")
 
-            if not isinstance(customer, dict):
-
-                return response(
-                    400,
-                    {
-                        "message":
-                        "Customer is required"
-                    }
-                )
-
             if not isinstance(items, list) or not items:
-
                 return response(
                     400,
                     {
-                        "message":
-                        "Items must be a non-empty list"
+                        "message": "Items must be a non-empty list"
                     }
                 )
-
-            customer_name = customer.get("Name")
-            customer_email = customer.get("Email")
-            customer_phone = customer.get("Phone")
-
-            if (
-                not isinstance(customer_name, str)
-                or not customer_name.strip()
-            ):
-
-                return response(
-                    400,
-                    {
-                        "message":
-                        "Customer Name is required"
-                    }
-                )
-
-            if (
-                not isinstance(customer_email, str)
-                or not customer_email.strip()
-            ):
-
-                return response(
-                    400,
-                    {
-                        "message":
-                        "Customer Email is required"
-                    }
-                )
-
-            customer_name = customer_name.strip()
-            customer_email = customer_email.strip()
 
             with connection.cursor() as cursor:
-
-                # ------------------------------------------------
-                # Find existing customer by email
-                # ------------------------------------------------
-
-                cursor.execute(
-                    """
-                    SELECT customer_id
-                    FROM Customers
-                    WHERE email = %s
-                    """,
-                    (customer_email,)
-                )
-
-                existing_customer = cursor.fetchone()
-
-                if existing_customer:
-
-                    customer_id = existing_customer[
-                        "customer_id"
-                    ]
-
-                else:
-
-                    cursor.execute(
-                        """
-                        INSERT INTO Customers
-                        (name, email, phone)
-                        VALUES (%s, %s, %s)
-                        """,
-                        (
-                            customer_name,
-                            customer_email,
-                            customer_phone
-                        )
-                    )
-
-                    customer_id = cursor.lastrowid
-
 
                 total_amount = Decimal("0.00")
                 item_rows = []
@@ -4036,14 +5570,11 @@ def lambda_handler(event, context):
                 for item in items:
 
                     if not isinstance(item, dict):
-
                         connection.rollback()
-
                         return response(
                             400,
                             {
-                                "message":
-                                "Each item must be an object"
+                                "message": "Each item must be an object"
                             }
                         )
 
@@ -4055,14 +5586,11 @@ def lambda_handler(event, context):
                         or not isinstance(product_id, int)
                         or product_id <= 0
                     ):
-
                         connection.rollback()
-
                         return response(
                             400,
                             {
-                                "message":
-                                "ProductID must be a positive integer"
+                                "message": "ProductID must be a positive integer"
                             }
                         )
 
@@ -4071,18 +5599,14 @@ def lambda_handler(event, context):
                         or not isinstance(quantity, int)
                         or quantity <= 0
                     ):
-
                         connection.rollback()
-
                         return response(
                             400,
                             {
-                                "message":
-                                "Quantity must be a positive integer"
+                                "message": "Quantity must be a positive integer"
                             }
                         )
 
-                    # Combine repeated ProductIDs into one quantity
                     if product_id in combined_items:
                         combined_items[product_id] += quantity
                     else:
@@ -4111,25 +5635,17 @@ def lambda_handler(event, context):
 
                     product = cursor.fetchone()
 
-                    # ------------------------------------------------
-                    # Product does not exist
-                    # ------------------------------------------------
-
                     if not product:
-
                         connection.rollback()
-
                         publish_event(
                             "OrderFailed",
                             {
-                                "customer_id": customer_id,
+                                "customer_id": user_id,
                                 "product_id": product_id,
                                 "requested_quantity": quantity,
-                                "reason":
-                                "Product not found"
+                                "reason": "Product not found"
                             }
                         )
-
                         return response(
                             404,
                             {
@@ -4138,27 +5654,18 @@ def lambda_handler(event, context):
                             }
                         )
 
-                    # ------------------------------------------------
-                    # Insufficient stock
-                    # ------------------------------------------------
-
                     if product["stock"] < quantity:
-
                         connection.rollback()
-
                         publish_event(
                             "OrderFailed",
                             {
-                                "customer_id": customer_id,
+                                "customer_id": user_id,
                                 "product_id": product_id,
                                 "requested_quantity": quantity,
-                                "available_stock":
-                                product["stock"],
-                                "reason":
-                                "Insufficient stock"
+                                "available_stock": product["stock"],
+                                "reason": "Insufficient stock"
                             }
                         )
-
                         return response(
                             400,
                             {
@@ -4168,13 +5675,9 @@ def lambda_handler(event, context):
                             }
                         )
 
-                    price = Decimal(
-                        str(product["price"])
-                    )
-
+                    price = Decimal(str(product["price"]))
                     total_amount += price * quantity
 
-                    # Only one order-item row per unique ProductID
                     item_rows.append(
                         {
                             "product_id": product_id,
@@ -4185,7 +5688,7 @@ def lambda_handler(event, context):
                     )
 
                 # ------------------------------------------------
-                # Create order
+                # Create order using authenticated user_id
                 # ------------------------------------------------
 
                 cursor.execute(
@@ -4205,14 +5708,10 @@ def lambda_handler(event, context):
                         FALSE
                     )
                     """,
-                    (
-                        customer_id,
-                        total_amount
-                    )
+                    (user_id, total_amount)
                 )
 
                 new_order_id = cursor.lastrowid
-
 
                 # ------------------------------------------------
                 # Create order items and reduce stock
@@ -4248,7 +5747,6 @@ def lambda_handler(event, context):
                         )
                     )
 
-
                     cursor.execute(
                         """
                         UPDATE Products
@@ -4264,38 +5762,24 @@ def lambda_handler(event, context):
                         )
                     )
 
-
                     if cursor.rowcount == 0:
-
                         connection.rollback()
-
                         publish_event(
                             "OrderFailed",
                             {
-                                "customer_id":
-                                customer_id,
-
-                                "product_id":
-                                item["product_id"],
-
-                                "requested_quantity":
-                                item["quantity"],
-
-                                "reason":
-                                "Unable to update stock"
+                                "customer_id": user_id,
+                                "product_id": item["product_id"],
+                                "requested_quantity": item["quantity"],
+                                "reason": "Unable to update stock"
                             }
                         )
-
                         return response(
                             400,
                             {
-                                "message":
-                                "Unable to update stock",
-                                "ProductID":
-                                item["product_id"]
+                                "message": "Unable to update stock",
+                                "ProductID": item["product_id"]
                             }
                         )
-
 
                 # ------------------------------------------------
                 # Initial order history
@@ -4322,78 +5806,51 @@ def lambda_handler(event, context):
                     """,
                     (
                         new_order_id,
-                        customer_id,
+                        user_id,
                         total_amount
                     )
                 )
 
-
-            # ------------------------------------------------
-            # Commit order transaction
-            # ------------------------------------------------
-
             connection.commit()
-
-
-            # ------------------------------------------------
-            # Publish OrderCreated event
-            # ------------------------------------------------
 
             publish_event(
                 "OrderCreated",
                 {
-                    "order_id":
-                    new_order_id,
-
-                    "customer_id":
-                    customer_id,
-
-                    "total_amount":
-                    total_amount,
-
-                    "status":
-                    "PENDING"
+                    "order_id": new_order_id,
+                    "customer_id": user_id,
+                    "total_amount": total_amount,
+                    "status": "PENDING"
                 }
             )
-
 
             return response(
                 201,
                 {
-                    "message":
-                    "Order created",
-
-                    "OrderID":
-                    new_order_id,
-
-                    "CustomerID":
-                    customer_id,
-
-                    "TotalAmount":
-                    total_amount
+                    "message": "Order created",
+                    "OrderID": new_order_id,
+                    "CustomerID": user_id,
+                    "TotalAmount": total_amount
                 }
             )
 
 
         # ====================================================
         # PATCH /orders/{orderId}
-        #
-        # Supports partial updates, cancellation
-        # and soft delete.
+        # ====================================================
+        # CUSTOMER -> can only cancel their own order.
+        # ADMIN    -> can partially update any order.
+        # Cancellation restores product stock exactly once.
         # ====================================================
 
         if http_method == "PATCH" and order_id:
 
             if not body:
-
                 return response(
                     400,
                     {
-                        "message":
-                        "Request body is required"
+                        "message": "Request body is required"
                     }
                 )
-
 
             allowed_fields = {
                 "CustomerID",
@@ -4403,91 +5860,122 @@ def lambda_handler(event, context):
                 "CancelReason"
             }
 
-
             invalid_fields = [
-                field
-                for field in body
+                field for field in body
                 if field not in allowed_fields
             ]
 
-
             if invalid_fields:
-
                 return response(
                     400,
                     {
-                        "message":
-                        "Invalid fields",
-
-                        "fields":
-                        invalid_fields
+                        "message": "Invalid fields",
+                        "fields": invalid_fields
                     }
                 )
 
+            # Customers cannot modify another customer's order and
+            # cannot change CustomerID, TotalAmount or IsDeleted.
+            if role == "CUSTOMER":
+
+                customer_allowed_fields = {
+                    "Status",
+                    "CancelReason"
+                }
+
+                customer_invalid_fields = [
+                    field
+                    for field in body
+                    if field not in customer_allowed_fields
+                ]
+
+                if customer_invalid_fields:
+                    return response(
+                        403,
+                        {
+                            "message": "Customers can only cancel their own orders",
+                            "fields": customer_invalid_fields
+                        }
+                    )
+
+                if body.get("Status") != "CANCELLED":
+                    return response(
+                        400,
+                        {
+                            "message": "Customers can only change order status to CANCELLED"
+                        }
+                    )
 
             with connection.cursor() as cursor:
 
-                cursor.execute(
-                    """
-                    SELECT
-                        order_id,
-                        customer_id,
-                        total_amount,
-                        status,
-                        is_deleted,
-                        cancelled_at,
-                        cancel_reason
-                    FROM Orders
-                    WHERE order_id = %s
-                    FOR UPDATE
-                    """,
-                    (order_id,)
-                )
+                if role == "CUSTOMER":
+                    cursor.execute(
+                        """
+                        SELECT
+                            order_id,
+                            customer_id,
+                            total_amount,
+                            status,
+                            is_deleted,
+                            cancelled_at,
+                            cancel_reason
+                        FROM Orders
+                        WHERE order_id = %s
+                          AND customer_id = %s
+                        FOR UPDATE
+                        """,
+                        (order_id, user_id)
+                    )
+                else:
+                    cursor.execute(
+                        """
+                        SELECT
+                            order_id,
+                            customer_id,
+                            total_amount,
+                            status,
+                            is_deleted,
+                            cancelled_at,
+                            cancel_reason
+                        FROM Orders
+                        WHERE order_id = %s
+                        FOR UPDATE
+                        """,
+                        (order_id,)
+                    )
 
                 existing_order = cursor.fetchone()
 
-
                 if not existing_order:
-
                     connection.rollback()
-
                     return response(
                         404,
                         {
-                            "message":
-                            "Order not found"
+                            "message": "Order not found"
                         }
                     )
-
 
                 if existing_order["is_deleted"]:
-
                     connection.rollback()
-
                     return response(
                         404,
                         {
-                            "message":
-                            "Order is already deleted"
+                            "message": "Order is already deleted"
                         }
                     )
-
 
                 customer_id = existing_order["customer_id"]
                 total_amount = existing_order["total_amount"]
-
                 old_status = existing_order["status"]
                 status = existing_order["status"]
-
                 is_deleted = existing_order["is_deleted"]
                 cancel_reason = existing_order["cancel_reason"]
 
-
                 # ------------------------------------------------
-                # Customer ID
+                # ADMIN: Customer ID
                 # ------------------------------------------------
 
-                if "CustomerID" in body:
+                if role == "ADMIN" and "CustomerID" in body:
 
                     customer_id = body["CustomerID"]
 
@@ -4496,82 +5984,61 @@ def lambda_handler(event, context):
                         or not isinstance(customer_id, int)
                         or customer_id <= 0
                     ):
-
                         connection.rollback()
-
                         return response(
                             400,
                             {
-                                "message":
-                                "CustomerID must be a positive integer"
+                                "message": "CustomerID must be a positive integer"
                             }
                         )
 
-
                     cursor.execute(
                         """
-                        SELECT customer_id
+                        SELECT user_id
                         FROM Customers
-                        WHERE customer_id = %s
+                        WHERE user_id = %s
                         """,
                         (customer_id,)
                     )
 
-
                     if not cursor.fetchone():
-
                         connection.rollback()
-
                         return response(
                             404,
                             {
-                                "message":
-                                "Customer not found"
+                                "message": "Customer not found"
                             }
                         )
 
-
                 # ------------------------------------------------
-                # Total amount
+                # ADMIN: Total amount
                 # ------------------------------------------------
 
-                if "TotalAmount" in body:
+                if role == "ADMIN" and "TotalAmount" in body:
 
                     try:
-
-                        total_amount = Decimal(
-                            str(body["TotalAmount"])
-                        )
-
+                        total_amount = Decimal(str(body["TotalAmount"]))
                     except (
                         ValueError,
                         TypeError,
                         InvalidOperation
                     ):
-
                         connection.rollback()
-
                         return response(
                             400,
                             {
-                                "message":
-                                "TotalAmount must be a valid number"
+                                "message": "TotalAmount must be a valid number"
                             }
                         )
-
 
                     if total_amount < 0:
-
                         connection.rollback()
-
                         return response(
                             400,
                             {
-                                "message":
-                                "TotalAmount cannot be negative"
+                                "message": "TotalAmount cannot be negative"
                             }
                         )
-
 
                 # ------------------------------------------------
                 # Status
@@ -4587,60 +6054,78 @@ def lambda_handler(event, context):
                         "COMPLETED",
                         "CANCELLED"
                     ):
-
                         connection.rollback()
-
                         return response(
                             400,
                             {
                                 "message":
-                                "Status must be one of PENDING, "
-                                "CONFIRMED, COMPLETED, CANCELLED"
+                                "Status must be one of PENDING, CONFIRMED, COMPLETED, CANCELLED"
                             }
                         )
-
 
                 # ------------------------------------------------
                 # Cancel reason
                 # ------------------------------------------------
 
                 if "CancelReason" in body:
-
                     cancel_reason = body["CancelReason"]
 
-
                 # ------------------------------------------------
-                # Soft delete
+                # ADMIN: Soft delete
                 # ------------------------------------------------
 
-                if "IsDeleted" in body:
+                if role == "ADMIN" and "IsDeleted" in body:
 
-                    if not isinstance(
-                        body["IsDeleted"],
-                        bool
-                    ):
-
+                    if not isinstance(body["IsDeleted"], bool):
                         connection.rollback()
-
                         return response(
                             400,
                             {
-                                "message":
-                                "IsDeleted must be true or false"
+                                "message": "IsDeleted must be true or false"
                             }
                         )
 
                     is_deleted = body["IsDeleted"]
 
-
                 # ------------------------------------------------
                 # Cancellation handling
+                # ------------------------------------------------
+                # Restore stock only on the first transition to
+                # CANCELLED. Orders_Items is locked as part of the
+                # same transaction.
                 # ------------------------------------------------
 
                 if (
                     status == "CANCELLED"
                     and old_status != "CANCELLED"
                 ):
+
+                    cursor.execute(
+                        """
+                        SELECT
+                            product_id,
+                            quantity
+                        FROM Orders_Items
+                        WHERE order_id = %s
+                        FOR UPDATE
+                        """,
+                        (order_id,)
+                    )
+
+                    order_items = cursor.fetchall()
+
+                    for item in order_items:
+                        cursor.execute(
+                            """
+                            UPDATE Products
+                            SET stock = stock + %s
+                            WHERE product_id = %s
+                            """,
+                            (
+                                item["quantity"],
+                                item["product_id"]
+                            )
+                        )
 
                     cursor.execute(
                         """
@@ -4687,7 +6172,6 @@ def lambda_handler(event, context):
                         )
                     )
 
-
                 # ------------------------------------------------
                 # Add history snapshot
                 # ------------------------------------------------
@@ -4718,86 +6202,61 @@ def lambda_handler(event, context):
                     (order_id,)
                 )
 
-
-            # ------------------------------------------------
-            # Commit PATCH
-            # ------------------------------------------------
-
             connection.commit()
 
-
-            # ------------------------------------------------
-            # Publish status change event
-            # ------------------------------------------------
-
             if old_status != status:
-
                 publish_event(
                     "OrderStatusChanged",
                     {
-                        "order_id":
-                        int(order_id),
-
-                        "old_status":
-                        old_status,
-
-                        "new_status":
-                        status
+                        "order_id": int(order_id),
+                        "old_status": old_status,
+                        "new_status": status
                     }
                 )
 
-
-                # ------------------------------------------------
-                # Publish confirmation event
-                # ------------------------------------------------
-
                 if status == "CONFIRMED":
-
                     publish_event(
                         "OrderConfirmed",
                         {
-                            "order_id":
-                            int(order_id),
-
-                            "old_status":
-                            old_status,
-
-                            "status":
-                            "CONFIRMED"
+                            "order_id": int(order_id),
+                            "old_status": old_status,
+                            "status": "CONFIRMED"
                         }
                     )
-
 
             return response(
                 200,
                 {
-                    "message":
-                    "Order updated",
-
-                    "OrderID":
-                    int(order_id)
+                    "message": "Order updated",
+                    "OrderID": int(order_id)
                 }
             )
 
 
         # ====================================================
         # PUT /orders/{orderId}
-        #
-        # Full update.
+        # ====================================================
+        # Kept for compatibility. API Gateway/RBAC currently does
+        # not allow PUT, so this should not be reachable normally.
         # ====================================================
 
         if http_method == "PUT" and order_id:
 
             if not body:
-
                 return response(
                     400,
                     {
-                        "message":
-                        "Request body is required"
+                        "message": "Request body is required"
                     }
                 )
 
+            if role == "CUSTOMER":
+                return response(
+                    403,
+                    {
+                        "message": "Customers are not allowed to use PUT for orders"
+                    }
+                )
 
             required_fields = [
                 "CustomerID",
@@ -4805,77 +6264,52 @@ def lambda_handler(event, context):
                 "Status"
             ]
 
-
             missing_fields = [
-                field
-                for field in required_fields
+                field for field in required_fields
                 if field not in body
             ]
 
-
             if missing_fields:
-
                 return response(
                     400,
                     {
-                        "message":
-                        "Missing required fields",
-
-                        "fields":
-                        missing_fields
+                        "message": "Missing required fields",
+                        "fields": missing_fields
                     }
                 )
 
-
             try:
-
-                customer_id = int(
-                    body["CustomerID"]
-                )
-
-                total_amount = Decimal(
-                    str(body["TotalAmount"])
-                )
-
+                customer_id = int(body["CustomerID"])
+                total_amount = Decimal(str(body["TotalAmount"]))
             except (
                 ValueError,
                 TypeError,
                 InvalidOperation
             ):
-
                 return response(
                     400,
                     {
-                        "message":
-                        "Invalid CustomerID or TotalAmount"
+                        "message": "Invalid CustomerID or TotalAmount"
                     }
                 )
-
 
             status = body["Status"]
 
-
             if customer_id <= 0:
-
                 return response(
                     400,
                     {
-                        "message":
-                        "CustomerID must be a positive integer"
+                        "message": "CustomerID must be a positive integer"
                     }
                 )
-
 
             if total_amount < 0:
-
                 return response(
                     400,
                     {
-                        "message":
-                        "TotalAmount cannot be negative"
+                        "message": "TotalAmount cannot be negative"
                     }
                 )
-
 
             if status not in (
                 "PENDING",
@@ -4883,15 +6317,12 @@ def lambda_handler(event, context):
                 "COMPLETED",
                 "CANCELLED"
             ):
-
                 return response(
                     400,
                     {
-                        "message":
-                        "Invalid status"
+                        "message": "Invalid status"
                     }
                 )
-
 
             with connection.cursor() as cursor:
 
@@ -4910,22 +6341,45 @@ def lambda_handler(event, context):
 
                 existing_order = cursor.fetchone()
 
-
                 if not existing_order:
-
                     connection.rollback()
-
                     return response(
                         404,
                         {
-                            "message":
-                            "Active order not found"
+                            "message": "Active order not found"
                         }
                     )
 
-
                 old_status = existing_order["status"]
 
+                # If PUT ever becomes enabled, cancellation must also
+                # restore stock exactly once.
+                if status == "CANCELLED" and old_status != "CANCELLED":
+
+                    cursor.execute(
+                        """
+                        SELECT product_id, quantity
+                        FROM Orders_Items
+                        WHERE order_id = %s
+                        FOR UPDATE
+                        """,
+                        (order_id,)
+                    )
+
+                    order_items = cursor.fetchall()
+
+                    for item in order_items:
+                        cursor.execute(
+                            """
+                            UPDATE Products
+                            SET stock = stock + %s
+                            WHERE product_id = %s
+                            """,
+                            (
+                                item["quantity"],
+                                item["product_id"]
+                            )
+                        )
 
                 cursor.execute(
                     """
@@ -4934,15 +6388,12 @@ def lambda_handler(event, context):
                         total_amount = %s,
                         status = %s,
                         changed_at = CURRENT_TIMESTAMP,
-                        cancelled_at =
-                            CASE
-                                WHEN %s = 'CANCELLED'
-                                THEN COALESCE(
-                                    cancelled_at,
-                                    CURRENT_TIMESTAMP
-                                )
-                                ELSE cancelled_at
-                            END
+                        cancelled_at = CASE
+                            WHEN %s = 'CANCELLED'
+                            THEN COALESCE(cancelled_at, CURRENT_TIMESTAMP)
+                            ELSE cancelled_at
+                        END,
+                        cancel_reason = %s
                     WHERE order_id = %s
                     """,
                     (
@@ -4950,10 +6401,10 @@ def lambda_handler(event, context):
                         total_amount,
                         status,
                         status,
+                        body.get("CancelReason"),
                         order_id
                     )
                 )
-
 
                 cursor.execute(
                     """
@@ -4981,77 +6432,55 @@ def lambda_handler(event, context):
                     (order_id,)
                 )
 
-
-            # ------------------------------------------------
-            # Commit PUT
-            # ------------------------------------------------
-
             connection.commit()
 
-
-            # ------------------------------------------------
-            # Publish status change event
-            # ------------------------------------------------
-
             if old_status != status:
-
                 publish_event(
                     "OrderStatusChanged",
                     {
-                        "order_id":
-                        int(order_id),
-
-                        "old_status":
-                        old_status,
-
-                        "new_status":
-                        status
+                        "order_id": int(order_id),
+                        "old_status": old_status,
+                        "new_status": status
                     }
                 )
-
-
-                if status == "CONFIRMED":
-
-                    publish_event(
-                        "OrderConfirmed",
-                        {
-                            "order_id":
-                            int(order_id),
-
-                            "old_status":
-                            old_status,
-
-                            "status":
-                            "CONFIRMED"
-                        }
-                    )
-
 
             return response(
                 200,
                 {
-                    "message":
-                    "Order updated",
-
-                    "OrderID":
-                    int(order_id)
+                    "message": "Order updated",
+                    "OrderID": int(order_id)
                 }
             )
 
 
         # ====================================================
         # DELETE /orders/{orderId}
-        #
-        # Soft delete through is_deleted.
+        # ====================================================
+        # Admin-only through RBAC. Soft delete through is_deleted.
         # ====================================================
 
         if http_method == "DELETE" and order_id:
+
+            if role != "ADMIN":
+                return response(
+                    403,
+                    {
+                        "message": "Only admins can delete orders"
+                    }
+                )
 
             with connection.cursor() as cursor:
 
                 cursor.execute(
                     """
-                    SELECT order_id
+                    SELECT
+                        order_id,
+                        customer_id,
+                        total_amount,
+                        status,
+                        is_deleted,
+                        cancelled_at,
+                        cancel_reason
                     FROM Orders
                     WHERE order_id = %s
                       AND is_deleted = FALSE
@@ -5060,19 +6489,16 @@ def lambda_handler(event, context):
                     (order_id,)
                 )
 
+                existing_order = cursor.fetchone()
 
-                if not cursor.fetchone():
-
+                if not existing_order:
                     connection.rollback()
-
                     return response(
                         404,
                         {
-                            "message":
-                            "Active order not found"
+                            "message": "Active order not found"
                         }
                     )
-
 
                 cursor.execute(
                     """
@@ -5084,7 +6510,6 @@ def lambda_handler(event, context):
                     (order_id,)
                 )
 
-
                 cursor.execute(
                     """
                     INSERT INTO Orders_History
@@ -5111,18 +6536,13 @@ def lambda_handler(event, context):
                     (order_id,)
                 )
 
-
             connection.commit()
-
 
             return response(
                 200,
                 {
-                    "message":
-                    "Order soft deleted",
-
-                    "OrderID":
-                    int(order_id)
+                    "message": "Order soft deleted",
+                    "OrderID": int(order_id)
                 }
             )
 
@@ -5132,8 +6552,7 @@ def lambda_handler(event, context):
         return response(
             400,
             {
-                "message":
-                "Unsupported operation"
+                "message": "Unsupported operation"
             }
         )
 
@@ -5146,8 +6565,7 @@ def lambda_handler(event, context):
         return response(
             400,
             {
-                "message":
-                "Invalid JSON request body"
+                "message": "Invalid JSON request body"
             }
         )
 
@@ -5157,15 +6575,12 @@ def lambda_handler(event, context):
         if connection:
             connection.rollback()
 
-        print(
-            f"Database integrity error: {str(e)}"
-        )
+        print(f"Database integrity error: {str(e)}")
 
         return response(
             400,
             {
-                "message":
-                "Database constraint violation"
+                "message": "Database constraint violation"
             }
         )
 
@@ -5175,15 +6590,12 @@ def lambda_handler(event, context):
         if connection:
             connection.rollback()
 
-        print(
-            f"Database error: {str(e)}"
-        )
+        print(f"Database error: {str(e)}")
 
         return response(
             500,
             {
-                "message":
-                "Database error"
+                "message": "Database error"
             }
         )
 
@@ -5193,15 +6605,12 @@ def lambda_handler(event, context):
         if connection:
             connection.rollback()
 
-        print(
-            f"Unexpected error: {str(e)}"
-        )
+        print(f"Unexpected error: {str(e)}")
 
         return response(
             500,
             {
-                "message":
-                "Internal server error"
+                "message": "Internal server error"
             }
         )
 
