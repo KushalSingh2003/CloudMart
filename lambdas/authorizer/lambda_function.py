@@ -777,7 +777,8 @@ PERMISSIONS = {
         "GET": [
             "/products",
             "/products/{id}",
-            "/orders/{id}"
+            "/orders/{id}",
+            "/orders"
         ],
 
         "POST": [
