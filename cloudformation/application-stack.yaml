@@ -406,7 +406,7 @@ Resources:
       Timeout: 30
 
       MemorySize: 256
-      VPCConfig:
+      VpcConfig:
         SubnetIds:
         - Fn::ImportValue:
             Fn::Sub: cloudmart-${Environment}-PrivateSubnetAId
