@@ -5,7 +5,7 @@
   },
   {
     "ParameterKey": "LambdaCodeBucket",
-    "ParameterValue": "kushal-lambda-codefiles-bucket"
+    "ParameterValue": "kushal-lambda-codefiles-bucket-new"
   }
 
 ]
