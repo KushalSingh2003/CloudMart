@@ -385,7 +385,7 @@ Resources:
 
       Code:
         S3Bucket: !Ref LambdaCodeBucket
-        S3Key: lambdas/stock_change-${GitHubRunId}.zip
+        S3Key: !sub lambdas/stock_change-${GitHubRunId}.zip
 
   # ==========================================================
   # REPORT LAMBDA
@@ -427,7 +427,7 @@ Resources:
 
       Code:
         S3Bucket: !Ref LambdaCodeBucket
-        S3Key: lambdas/report-${GitHubRunId}.zip
+        S3Key: !Sub lambdas/report-${GitHubRunId}.zip
 
   # ==========================================================
   # LAMBDA AUTHORIZER ROLE
