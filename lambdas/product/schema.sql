@@ -10,10 +10,10 @@ CREATE TABLE IF NOT EXISTS Customers (
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
     phone VARCHAR(20),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    changed_at TIMESTAMP NULL
+    status ENUM('customer', 'Admin') NOT NULL DEFAULT 'customer',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    
 );
-
 CREATE TABLE IF NOT EXISTS Products (
     product_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
