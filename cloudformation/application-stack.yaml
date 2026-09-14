@@ -183,10 +183,54 @@ Resources:
       Tags:
       - Key: Name
         Value: !Sub cloudmart-${Environment}-check-stock-lambda-role
+    # ==========================================================
+    # REPORT LAMBDA IAM ROLE
+    # ==========================================================
+  ReportsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
 
-  # ==========================================================
-  # REPORT LAMBDA IAM ROLE
-  # ==========================================================
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+      Tags:
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-reports
+    # ==========================================================
+    # DAILY REPORT EVENTBRIDGE RULE
+    # ==========================================================
+
+  DailyReportSchedule:
+    Type: AWS::Events::Rule
+
+    Properties:
+      Name: !Sub cloudmart-${Environment}-daily-report
+
+      Description: Trigger Daily Report Lambda every day
+
+      ScheduleExpression: cron(30 3 * * ? *)
+
+      State: ENABLED
+
+      Targets:
+      - Arn: !GetAtt ReportLambda.Arn
+        Id: DailyReportLambdaTarget
+  DailyReportLambdaPermission:
+    Type: AWS::Lambda::Permission
+
+    Properties:
+      FunctionName: !Ref ReportLambda
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt DailyReportSchedule.Arn
 
   ReportLambdaRole:
     Type: AWS::IAM::Role
@@ -206,6 +250,7 @@ Resources:
 
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
 
       Policies:
 
@@ -216,7 +261,15 @@ Resources:
           - Effect: Allow
             Action:
             - ssm:GetParameter
-            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db/*
+            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db-*
+      - PolicyName: UploadReportsToS3
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - s3:PutObject
+            Resource: !Sub ${ReportsBucket.Arn}/reports/*
 
       Tags:
       - Key: Name
@@ -332,7 +385,7 @@ Resources:
 
       Code:
         S3Bucket: !Ref LambdaCodeBucket
-        S3Key: lambdas/stock_change.zip
+        S3Key: lambdas/stock_change-${GitHubRunId}.zip
 
   # ==========================================================
   # REPORT LAMBDA
@@ -353,10 +406,28 @@ Resources:
       Timeout: 30
 
       MemorySize: 256
+      VPCConfig:
+        SubnetIds:
+        - Fn::ImportValue:
+            Fn::Sub: cloudmart-${Environment}-PrivateSubnetAId
+        - Fn::ImportValue:
+            Fn::Sub: cloudmart-${Environment}-PrivateSubnetBId
+
+        SecurityGroupIds:
+        - Fn::ImportValue:
+            Fn::Sub: cloudmart-${Environment}-LambdaSecurityGroupId
+      Environment:
+        Variables:
+          DB_HOST_PARAMETER: !Sub /cloudmart/${Environment}/db-endpoint
+          DB_PORT_PARAMETER: !Sub /cloudmart/${Environment}/db-port
+          DB_NAME_PARAMETER: !Sub /cloudmart/${Environment}/db-name
+          DB_USER_PARAMETER: !Sub /cloudmart/${Environment}/db-username
+          DB_PASSWORD_PARAMETER: !Sub /cloudmart/${Environment}/db-password
+          REPORTS_BUCKET_NAME: !Ref ReportsBucket
 
       Code:
         S3Bucket: !Ref LambdaCodeBucket
-        S3Key: lambdas/report.zip
+        S3Key: lambdas/report-${GitHubRunId}.zip
 
   # ==========================================================
   # LAMBDA AUTHORIZER ROLE
@@ -957,3 +1028,6 @@ Outputs:
   ApplicationBucketName:
     Description: Application S3 Bucket
     Value: !Ref ApplicationS3Bucket
+  ReportsBucketName:
+    Description: S3 bucket containing daily reports
+    Value: !Ref ReportsBucket
