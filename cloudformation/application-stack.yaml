@@ -42,77 +42,6 @@ Resources:
       Name: !Sub cloudmart-${Environment}-event-bus
 
   # ==========================================================
-  # IAM ROLE - EC2
-  # ==========================================================
-
-  ApplicationEC2Role:
-    Type: AWS::IAM::Role
-
-    Properties:
-      RoleName: !Sub cloudmart-${Environment}-ec2-role
-
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-        - Effect: Allow
-          Principal:
-            Service:
-            - ec2.amazonaws.com
-          Action:
-          - sts:AssumeRole
-
-      ManagedPolicyArns:
-      - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
-
-      Tags:
-      - Key: Name
-        Value: !Sub cloudmart-${Environment}-ec2-role
-
-  # ==========================================================
-  # EC2 INSTANCE PROFILE
-  # ==========================================================
-
-  ApplicationEC2InstanceProfile:
-    Type: AWS::IAM::InstanceProfile
-
-    Properties:
-      Roles:
-      - !Ref ApplicationEC2Role
-  AuthTokenParameter:
-    Type: AWS::SSM::Parameter
-    Properties:
-      Name: !Sub /cloudmart/${Environment}/auth-token
-      Type: String
-      Value: !Ref AuthToken
-      Description: CloudMart API authentication token
-  # ==========================================================
-  # EC2 INSTANCE
-  # ==========================================================
-
-  ApplicationEC2:
-    Type: AWS::EC2::Instance
-
-    Properties:
-
-      ImageId: '{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}'
-
-      InstanceType: t3.micro
-
-      NetworkInterfaces:
-      - DeviceIndex: '0'
-        AssociatePublicIpAddress: true
-        SubnetId:
-          Fn::ImportValue: !Sub cloudmart-${Environment}-PublicSubnetId
-        GroupSet:
-        - Fn::ImportValue: !Sub cloudmart-${Environment}-EC2SecurityGroupId
-
-      IamInstanceProfile: !Ref ApplicationEC2InstanceProfile
-
-      Tags:
-      - Key: Name
-        Value: !Sub cloudmart-${Environment}-application-ec2
-
-  # ==========================================================
   # ORDER LAMBDA IAM ROLE
   # ==========================================================
 
@@ -134,6 +63,7 @@ Resources:
 
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
 
       Policies:
 
@@ -144,7 +74,7 @@ Resources:
           - Effect: Allow
             Action:
             - ssm:GetParameter
-            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db/*
+            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db-*
 
       - PolicyName: PublishEvents
         PolicyDocument:
@@ -192,7 +122,7 @@ Resources:
           - Effect: Allow
             Action:
             - ssm:GetParameter
-            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db-password
+            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db-*
 
       - PolicyName: PublishEvents
         PolicyDocument:
@@ -253,10 +183,54 @@ Resources:
       Tags:
       - Key: Name
         Value: !Sub cloudmart-${Environment}-check-stock-lambda-role
+    # ==========================================================
+    # REPORT LAMBDA IAM ROLE
+    # ==========================================================
+  ReportsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
 
-  # ==========================================================
-  # REPORT LAMBDA IAM ROLE
-  # ==========================================================
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+      Tags:
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-reports
+    # ==========================================================
+    # DAILY REPORT EVENTBRIDGE RULE
+    # ==========================================================
+
+  DailyReportSchedule:
+    Type: AWS::Events::Rule
+
+    Properties:
+      Name: !Sub cloudmart-${Environment}-daily-report
+
+      Description: Trigger Daily Report Lambda every day
+
+      ScheduleExpression: cron(30 3 * * ? *)
+
+      State: ENABLED
+
+      Targets:
+      - Arn: !GetAtt ReportLambda.Arn
+        Id: DailyReportLambdaTarget
+  DailyReportLambdaPermission:
+    Type: AWS::Lambda::Permission
+
+    Properties:
+      FunctionName: !Ref ReportLambda
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt DailyReportSchedule.Arn
 
   ReportLambdaRole:
     Type: AWS::IAM::Role
@@ -276,6 +250,7 @@ Resources:
 
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
 
       Policies:
 
@@ -286,7 +261,15 @@ Resources:
           - Effect: Allow
             Action:
             - ssm:GetParameter
-            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db/*
+            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db-*
+      - PolicyName: UploadReportsToS3
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - s3:PutObject
+            Resource: !Sub ${ReportsBucket.Arn}/reports/*
 
       Tags:
       - Key: Name
@@ -314,7 +297,26 @@ Resources:
 
       Code:
         S3Bucket: !Ref LambdaCodeBucket
-        S3Key: lambdas/order.zip
+        S3Key: !Sub lambdas/order-${GitHubRunId}.zip
+      VpcConfig:
+        SubnetIds:
+        - Fn::ImportValue:
+            Fn::Sub: cloudmart-${Environment}-PrivateSubnetAId
+        - Fn::ImportValue:
+            Fn::Sub: cloudmart-${Environment}-PrivateSubnetBId
+
+        SecurityGroupIds:
+        - Fn::ImportValue:
+            Fn::Sub: cloudmart-${Environment}-LambdaSecurityGroupId
+      Environment:
+        Variables:
+          DB_HOST_PARAMETER: !Sub /cloudmart/${Environment}/db-endpoint
+          DB_PORT_PARAMETER: !Sub /cloudmart/${Environment}/db-port
+          DB_NAME_PARAMETER: !Sub /cloudmart/${Environment}/db-name
+          DB_USER_PARAMETER: !Sub /cloudmart/${Environment}/db-username
+          DB_PASSWORD_PARAMETER: !Sub /cloudmart/${Environment}/db-password
+
+          EVENT_BUS_NAME: !Ref CloudMartEventBus
 
   # ==========================================================
   # PRODUCT LAMBDA
@@ -354,23 +356,10 @@ Resources:
 
       Environment:
         Variables:
-
-          DB_HOST:
-            Fn::ImportValue:
-              Fn::Sub: cloudmart-${Environment}-rds-endpoint
-
-          DB_PORT:
-            Fn::ImportValue:
-              Fn::Sub: cloudmart-${Environment}-rds-port
-
-          DB_NAME:
-            Fn::ImportValue:
-              Fn::Sub: cloudmart-${Environment}-database-name
-
-          DB_USER:
-            Fn::ImportValue:
-              Fn::Sub: cloudmart-${Environment}-db-master-username
-
+          DB_HOST_PARAMETER: !Sub /cloudmart/${Environment}/db-endpoint
+          DB_PORT_PARAMETER: !Sub /cloudmart/${Environment}/db-port
+          DB_NAME_PARAMETER: !Sub /cloudmart/${Environment}/db-name
+          DB_USER_PARAMETER: !Sub /cloudmart/${Environment}/db-username
           DB_PASSWORD_PARAMETER: !Sub /cloudmart/${Environment}/db-password
           EVENT_BUS_NAME: !Ref CloudMartEventBus
 
@@ -396,7 +385,7 @@ Resources:
 
       Code:
         S3Bucket: !Ref LambdaCodeBucket
-        S3Key: lambdas/stock_change.zip
+        S3Key: !Sub lambdas/stock_change-${GitHubRunId}.zip
 
   # ==========================================================
   # REPORT LAMBDA
@@ -417,10 +406,28 @@ Resources:
       Timeout: 30
 
       MemorySize: 256
+      VpcConfig:
+        SubnetIds:
+        - Fn::ImportValue:
+            Fn::Sub: cloudmart-${Environment}-PrivateSubnetAId
+        - Fn::ImportValue:
+            Fn::Sub: cloudmart-${Environment}-PrivateSubnetBId
+
+        SecurityGroupIds:
+        - Fn::ImportValue:
+            Fn::Sub: cloudmart-${Environment}-LambdaSecurityGroupId
+      Environment:
+        Variables:
+          DB_HOST_PARAMETER: !Sub /cloudmart/${Environment}/db-endpoint
+          DB_PORT_PARAMETER: !Sub /cloudmart/${Environment}/db-port
+          DB_NAME_PARAMETER: !Sub /cloudmart/${Environment}/db-name
+          DB_USER_PARAMETER: !Sub /cloudmart/${Environment}/db-username
+          DB_PASSWORD_PARAMETER: !Sub /cloudmart/${Environment}/db-password
+          REPORTS_BUCKET_NAME: !Ref ReportsBucket
 
       Code:
         S3Bucket: !Ref LambdaCodeBucket
-        S3Key: lambdas/report.zip
+        S3Key: !Sub lambdas/report-${GitHubRunId}.zip
 
   # ==========================================================
   # LAMBDA AUTHORIZER ROLE
@@ -444,6 +451,7 @@ Resources:
 
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
 
       Policies:
 
@@ -455,6 +463,14 @@ Resources:
             Action:
             - ssm:GetParameter
             Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/auth-token
+      - PolicyName: ReadDBCredentials
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - ssm:GetParameter
+            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db-*
 
       Tags:
       - Key: Name
@@ -480,10 +496,25 @@ Resources:
 
       Code:
         S3Bucket: !Ref LambdaCodeBucket
-        S3Key: lambdas/authorizer.zip
+        S3Key: !Sub lambdas/authorizer-${GitHubRunId}.zip
+      VpcConfig:
+        SubnetIds:
+        - Fn::ImportValue:
+            Fn::Sub: cloudmart-${Environment}-PrivateSubnetAId
+        - Fn::ImportValue:
+            Fn::Sub: cloudmart-${Environment}-PrivateSubnetBId
+
+        SecurityGroupIds:
+        - Fn::ImportValue:
+            Fn::Sub: cloudmart-${Environment}-LambdaSecurityGroupId
 
       Environment:
         Variables:
+          DB_HOST_PARAMETER: !Sub /cloudmart/${Environment}/db-endpoint
+          DB_PASSWORD_PARAMETER: !Sub /cloudmart/${Environment}/db-password
+          DB_USER_PARAMETER: !Sub /cloudmart/${Environment}/db-username
+          DB_NAME_PARAMETER: !Sub /cloudmart/${Environment}/db-name
+          DB_PORT_PARAMETER: !Sub /cloudmart/${Environment}/db-port
           AUTH_TOKEN_PARAMETER: !Sub /cloudmart/${Environment}/auth-token
   AuthorizerLambdaPermission:
     Type: AWS::Lambda::Permission
@@ -521,21 +552,143 @@ Resources:
     Type: AWS::ApiGateway::Deployment
     DependsOn:
     - ProductsGetMethod
+    - ProductsPostMethod
+    - ProductsPutMethod
+    - ProductsDeleteMethod
+    - ProductsGetByIdMethod
+    - ProductsPatchMethod
+    - OrdersGetMethod
+    - OrdersPostMethod
+    - OrdersGetByIdMethod
+    - OrdersDeleteMethod
+    - OrderPatchMethod
+    - OrderPutMethod
     Properties:
       RestApiId: !Ref CloudMartApi
       StageName: dev
-
   # ==========================================================
   # API GATEWAY RESOURCES
   # ==========================================================
 
   OrdersResource:
     Type: AWS::ApiGateway::Resource
-
     Properties:
       RestApiId: !Ref CloudMartApi
       ParentId: !GetAtt CloudMartApi.RootResourceId
       PathPart: orders
+
+  OrdersGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref CloudMartApi
+      ResourceId: !Ref OrdersResource
+      HttpMethod: GET
+
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref CloudMartAuthorizer
+
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OrderLambdaArn}/invocations
+          - OrderLambdaArn: !GetAtt OrderLambda.Arn
+
+  OrdersPostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref CloudMartApi
+      ResourceId: !Ref OrdersResource
+      HttpMethod: POST
+
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref CloudMartAuthorizer
+
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OrderLambdaArn}/invocations
+          - OrderLambdaArn: !GetAtt OrderLambda.Arn
+
+  OrderIdResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref CloudMartApi
+      ParentId: !Ref OrdersResource
+      PathPart: "{orderId}"
+
+  OrdersGetByIdMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref CloudMartApi
+      ResourceId: !Ref OrderIdResource
+      HttpMethod: GET
+
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref CloudMartAuthorizer
+
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OrderLambdaArn}/invocations
+          - OrderLambdaArn: !GetAtt OrderLambda.Arn
+  OrdersDeleteMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref CloudMartApi
+      ResourceId: !Ref OrderIdResource
+      HttpMethod: DELETE
+
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref CloudMartAuthorizer
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OrderLambdaArn}/invocations
+          - OrderLambdaArn: !GetAtt OrderLambda.Arn
+  OrderPatchMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref CloudMartApi
+      ResourceId: !Ref OrderIdResource
+      HttpMethod: PATCH
+
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref CloudMartAuthorizer
+
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OrderLambdaArn}/invocations
+          - OrderLambdaArn: !GetAtt OrderLambda.Arn
+  OrderPutMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref CloudMartApi
+      ResourceId: !Ref OrderIdResource
+      HttpMethod: PUT
+
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref CloudMartAuthorizer
+
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OrderLambdaArn}/invocations
+          - OrderLambdaArn: !GetAtt OrderLambda.Arn
+
+  OrderLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref OrderLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${CloudMartApi}/*/*/orders*
 
   ProductsResource:
     Type: AWS::ApiGateway::Resource
@@ -616,6 +769,38 @@ Resources:
         Uri: !Sub
           - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ProductLambdaArn}/invocations
           - ProductLambdaArn: !GetAtt ProductLambda.Arn
+  ProductsGetByIdMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref CloudMartApi
+      ResourceId: !Ref ProductIdResource
+      HttpMethod: GET
+
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref CloudMartAuthorizer
+
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ProductLambdaArn}/invocations
+          - ProductLambdaArn: !GetAtt ProductLambda.Arn
+  ProductsPatchMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref CloudMartApi
+      ResourceId: !Ref ProductIdResource
+      HttpMethod: PATCH
+
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref CloudMartAuthorizer
+
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ProductLambdaArn}/invocations
+          - ProductLambdaArn: !GetAtt ProductLambda.Arn
 
   ProductLambdaPermission:
     Type: AWS::Lambda::Permission
@@ -667,7 +852,7 @@ Resources:
 
       Protocol: email
 
-      Endpoint: kushalsingh99807@gmail.com
+      Endpoint: motivatedguy101@gmail.com
 
   # ==========================================================
   # EVENTBRIDGE RULE
@@ -677,38 +862,81 @@ Resources:
     Type: AWS::Events::Rule
 
     Properties:
+
       Name: !Sub cloudmart-${Environment}-order-events
 
       EventBusName: !Ref CloudMartEventBus
 
       EventPattern:
+
         source:
         - cloudmart
 
         detail-type:
-        - OrderEvent
+        - OrderCreated
+        - OrderFailed
+        - OrderStatusChanged
+        - OrderConfirmed
 
       State: ENABLED
 
       Targets:
-      - Arn: !GetAtt OrderLambda.Arn
-        Id: OrderLambdaTarget
 
+      - Arn: !Ref CloudMartSNSTopic
+        Id: OrderSNSTarget
+  OrderSNSTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+
+    Properties:
+
+      Topics:
+      - !Ref CloudMartSNSTopic
+
+      PolicyDocument:
+
+        Version: '2012-10-17'
+
+        Statement:
+
+        - Sid: AllowEventBridgePublish
+
+          Effect: Allow
+
+          Principal:
+            Service:
+            - events.amazonaws.com
+
+          Action:
+          - sns:Publish
+
+          Resource: !Ref CloudMartSNSTopic
   # ==========================================================
   # LAMBDA PERMISSION FOR EVENTBRIDGE
   # ==========================================================
 
-  OrderLambdaEventBridgePermission:
-    Type: AWS::Lambda::Permission
+  OrderLambdaEventBridgePolicy:
+    Type: AWS::IAM::Policy
 
     Properties:
-      FunctionName: !Ref OrderLambda
 
-      Action: lambda:InvokeFunction
+      PolicyName: !Sub cloudmart-${Environment}-order-eventbridge-policy
 
-      Principal: events.amazonaws.com
+      Roles:
+      - !Ref OrderLambdaRole
 
-      SourceArn: !GetAtt OrderEventRule.Arn
+      PolicyDocument:
+
+        Version: '2012-10-17'
+
+        Statement:
+
+        - Effect: Allow
+
+          Action:
+          - events:PutEvents
+
+          Resource:
+          - !GetAtt CloudMartEventBus.Arn
 
   # ==========================================================
   # APPLICATION S3 BUCKET
@@ -781,18 +1009,6 @@ Resources:
 
 Outputs:
 
-  EC2InstanceId:
-    Description: Application EC2 Instance ID
-    Value: !Ref ApplicationEC2
-
-  EC2PublicIp:
-    Description: Application EC2 Public IP
-    Value: !GetAtt ApplicationEC2.PublicIp
-
-  EC2Role:
-    Description: EC2 IAM Role
-    Value: !Ref ApplicationEC2Role
-
   EventBusArn:
     Description: CloudMart EventBridge Event Bus ARN
     Value: !GetAtt CloudMartEventBus.Arn
@@ -812,3 +1028,6 @@ Outputs:
   ApplicationBucketName:
     Description: Application S3 Bucket
     Value: !Ref ApplicationS3Bucket
+  ReportsBucketName:
+    Description: S3 bucket containing daily reports
+    Value: !Ref ReportsBucket

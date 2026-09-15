@@ -5,7 +5,6 @@ Description: CloudMart Data Stack. Creates the RDS MySQL database using the priv
 # ============================================================================
 # PARAMETERS
 # ============================================================================
-
 Parameters:
 
   Environment:
@@ -29,12 +28,10 @@ Parameters:
 
   DatabaseName:
     Type: String
-    Default: cloudmart
     Description: Initial database name.
 
   MasterUsername:
     Type: String
-    Default: admin
     Description: RDS master username.
 
   MasterUserPassword:
@@ -56,7 +53,6 @@ Parameters:
     Default: 1
     MinValue: 0
     Description: Number of days to retain automated backups.
-
 # ============================================================================
 # RESOURCES
 # ============================================================================
@@ -99,6 +95,33 @@ Resources:
       Name: !Sub /cloudmart/${Environment}/db-password
       Type: String
       Value: !Ref MasterUserPassword
+  DBUsernameParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /cloudmart/${Environment}/db-username
+      Type: String
+      Value: !Ref MasterUsername
+
+  DBNameParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /cloudmart/${Environment}/db-name
+      Type: String
+      Value: !Ref DatabaseName
+
+  DBEndpointParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /cloudmart/${Environment}/db-endpoint
+      Type: String
+      Value: !GetAtt CloudMartDatabase.Endpoint.Address
+
+  DBPortParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /cloudmart/${Environment}/db-port
+      Type: String
+      Value: !GetAtt CloudMartDatabase.Endpoint.Port
 
   # ==========================================================================
   # RDS MYSQL DATABASE

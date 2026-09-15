@@ -13,7 +13,9 @@ on:
         type: string
 
       parameters_file:
-        required: true
+        required: false
+        default: ''
+
         type: string
 
       tags_file:
@@ -26,6 +28,14 @@ on:
     secrets:
       AUTH_TOKEN:
         required: true
+      DB_NAME:
+        required: false
+
+      DB_USERNAME:
+        required: false
+
+      DB_PASSWORD:
+        required: false
 
 permissions:
   id-token: write
@@ -78,6 +88,10 @@ jobs:
         TAGS_FILE: ${{ inputs.tags_file }}
         TEMPLATE_S3_URL: ${{ steps.upload.outputs.template_s3_url }}
         AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
+        ENVIRONMENT: ${{ inputs.environment }}
+        DB_NAME: ${{ secrets.DB_NAME }}
+        DB_USERNAME: ${{ secrets.DB_USERNAME }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
 
       run: |
         chmod +x .github/scripts/create-changeset.sh

@@ -21,30 +21,31 @@ permissions:
   contents: read
 
 jobs:
-  # network:
-  #   name: Deploy Network Stacks first attempt
-  #   uses: ./.github/workflows/deploy-stack.yaml
-  #   with:
-  #     stack_name: network-stack-CloudMart
-  #     template_file: cloudformation/network-stack.yaml
-  #     parameters_file: cloudformation/config/network-parameters.json
-  #     tags_file: cloudformation/config/tags.json
-  #     environment: dev
-  #   secrets: inherit
+  network:
+    name: Deploy Network Stacks first attempt
+    uses: ./.github/workflows/deploy-stack.yaml
+    with:
+      stack_name: network-stack-CloudMart
+      template_file: cloudformation/network-stack.yaml
+      parameters_file: cloudformation/config/network-parameters.json
+      tags_file: cloudformation/config/tags.json
+      environment: dev
+    secrets: inherit
 
-  # data:
-  #   name: Deploy Data Stack
+  data:
+    name: Deploy Data Stack
+    needs: network
+    uses: ./.github/workflows/deploy-stack.yaml
+    with:
+      stack_name: data-stack-CloudMart
+      template_file: cloudformation/data-stack.yaml
+      tags_file: cloudformation/config/tags.json
+      environment: dev
+    secrets: inherit
 
-  #   uses: ./.github/workflows/deploy-stack.yaml
-  #   with:
-  #     stack_name: data-stack-CloudMart
-  #     template_file: cloudformation/data-stack.yaml
-  #     parameters_file: cloudformation/config/data-parameters.json
-  #     tags_file: cloudformation/config/tags.json
-  #     environment: dev
-  #   secrets: inherit
   package-lambdas:
     name: Package Lambda Functions seventh  attempt
+    needs: [ network, data ]
 
     runs-on: ubuntu-latest
 
@@ -85,6 +86,7 @@ jobs:
           -t build/product
 
         cp lambdas/product/lambda_function.py build/product/
+        cp lambdas/product/schema.sql build/product/
 
         cd build/product
         zip -r ../../product.zip .
@@ -128,14 +130,14 @@ jobs:
 
     - name: Upload Lambda packages to S3
       run: |
-        aws s3 cp order.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/order.zip
+        aws s3 cp order.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/order-${GITHUB_RUN_ID}.zip
         aws s3 cp product.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/product-${GITHUB_RUN_ID}.zip
-        aws s3 cp report.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/report.zip
-        aws s3 cp stock_change.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/stock_change.zip
-        aws s3 cp authorizer.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/authorizer.zip/
+        aws s3 cp report.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/report-${GITHUB_RUN_ID}.zip
+        aws s3 cp stock_change.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/stock_change-${GITHUB_RUN_ID}.zip
+        aws s3 cp authorizer.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/authorizer-${GITHUB_RUN_ID}.zip
   application:
     name: Deploy Application Stack
-    needs: package-lambdas
+    needs: [ network, data, package-lambdas ]
 
     uses: ./.github/workflows/deploy-stack.yaml
     with:
