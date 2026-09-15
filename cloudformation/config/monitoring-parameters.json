@@ -9,7 +9,7 @@
   },
   {
     "ParameterKey": "KeyPairName",
-    "ParameterValue": "kushal-singh"
+    "ParameterValue": "cloudmart-dashboard-key"
   },
   {
     "ParameterKey": "AmiId",
