@@ -18,9 +18,7 @@ Parameters:
   LambdaCodeBucket:
     Type: String
     Description: S3 bucket containing Lambda deployment packages
-  AuthToken:
-    Type: String
-    NoEcho: true
+
   GitHubRunId:
     Description: GitHub Actions run ID for versioned Lambda artifact deployment
     Type: String
