@@ -164,6 +164,7 @@ jobs:
     with:
       stack_name: application-stack-CloudMart
       template_file: cloudformation/dashboard-stack.yaml
+      parameters_file: cloudformation/config/monitoring-parameters.json
       tags_file: cloudformation/config/tags.json
       environment: dev
 

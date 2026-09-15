@@ -1,0 +1,18 @@
+[
+  {
+    "ParameterKey": "Environment",
+    "ParameterValue": "dev"
+  },
+  {
+    "ParameterKey": "InstanceType",
+    "ParameterValue": "t3.micro"
+  },
+  {
+    "ParameterKey": "KeyPairName",
+    "ParameterValue": "kushal-singh"
+  },
+  {
+    "ParameterKey": "AmiId",
+    "ParameterValue": "ami-098f18a6382fb4b2d"
+  }
+]
