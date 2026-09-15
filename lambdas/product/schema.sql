@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS Customers (
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
     phone VARCHAR(20),
-    status ENUM('customer', 'Admin') NOT NULL DEFAULT 'customer',
+    Role ENUM('customer', 'Admin') NOT NULL DEFAULT 'customer',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     
 );
