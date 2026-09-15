@@ -1,0 +1,83 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >
+  CloudMart Dashboard Stack. Creates a public EC2 instance for hosting the Flask dashboard application.
+
+Parameters:
+
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+    - dev
+    - prod
+
+  InstanceType:
+    Type: String
+    Default: t3.micro
+
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+
+  AmiId:
+    Type: AWS::EC2::Image::Id
+
+  GitHubRunId:
+    Type: String
+
+Resources:
+
+  # ============================================================
+  # DASHBOARD EC2
+  # ============================================================
+
+  DashboardEC2:
+    Type: AWS::EC2::Instance
+
+    Properties:
+
+      ImageId: !Ref AmiId
+
+      InstanceType: !Ref InstanceType
+
+      KeyName: !Ref KeyPairName
+
+      SubnetId:
+        Fn::ImportValue: !Sub cloudmart-${Environment}-PublicSubnetId
+
+      SecurityGroupIds:
+      - Fn::ImportValue: !Sub cloudmart-${Environment}-EC2SecurityGroupId
+
+      Tags:
+
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-dashboard-ec2
+
+      - Key: Project
+        Value: CloudMart
+
+      - Key: Environment
+        Value: !Ref Environment
+
+      - Key: GitHubRunId
+        Value: !Ref GitHubRunId
+
+Outputs:
+
+  DashboardInstanceId:
+    Description: Dashboard EC2 Instance ID
+    Value: !Ref DashboardEC2
+
+  DashboardPublicIp:
+    Description: Dashboard EC2 Public IP
+    Value: !GetAtt DashboardEC2.PublicIp
+
+  DashboardPublicDns:
+    Description: Dashboard EC2 Public DNS
+    Value: !GetAtt DashboardEC2.PublicDnsName
+
+  DashboardUrl:
+    Description: CloudMart Dashboard URL
+    Value: !Sub
+      - http://${PublicIp}
+      - PublicIp: !GetAtt DashboardEC2.PublicIp

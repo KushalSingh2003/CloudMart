@@ -147,3 +147,15 @@ jobs:
       environment: dev
 
     secrets: inherit
+  monitoring:
+    name: Deploy Monitoring  Stack
+    needs: [ application, package-lambdas ]
+
+    uses: ./.github/workflows/deploy-stack.yaml
+    with:
+      stack_name: application-stack-CloudMart
+      template_file: cloudformation/dashboard-stack.yaml
+      tags_file: cloudformation/config/tags.json
+      environment: dev
+
+    secrets: inherit

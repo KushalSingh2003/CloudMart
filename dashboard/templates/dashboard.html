@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>CloudMart Dashboard</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/dashboard.css') }}"
+    >
+</head>
+
+<body>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+
+        <div class="logo">
+            <span class="logo-icon">C</span>
+            <span>CloudMart</span>
+        </div>
+
+        <nav>
+
+            <a href="#" class="nav-item active">
+                <span>▣</span>
+                Dashboard
+            </a>
+
+            <a href="#" class="nav-item">
+                <span>▤</span>
+                Orders
+            </a>
+
+            <a href="#" class="nav-item">
+                <span>▦</span>
+                Products
+            </a>
+
+            <a href="#" class="nav-item">
+                <span>◉</span>
+                Customers
+            </a>
+
+        </nav>
+
+        <div class="sidebar-bottom">
+            <div class="system-status">
+                <span class="status-dot"></span>
+                System Operational
+            </div>
+        </div>
+
+    </aside>
+
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+        <!-- Header -->
+        <header class="topbar">
+
+            <div>
+                <h1>Dashboard</h1>
+                <p>CloudMart sales and order overview</p>
+            </div>
+
+            <div class="header-right">
+
+                <div class="date-display" id="currentDate">
+                    Loading...
+                </div>
+
+                <div class="profile">
+                    <div class="avatar">A</div>
+                    <div>
+                        <strong>Admin</strong>
+                        <small>Administrator</small>
+                    </div>
+                </div>
+
+            </div>
+
+        </header>
+
+
+        <!-- Statistics -->
+        <section class="stats-grid">
+
+            <div class="stat-card">
+
+                <div class="stat-header">
+                    <span>Total Orders</span>
+                    <div class="stat-icon">▤</div>
+                </div>
+
+                <h2 id="totalOrders">0</h2>
+
+                <p class="stat-description">
+                    Orders placed today
+                </p>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <div class="stat-header">
+                    <span>Total Sales</span>
+                    <div class="stat-icon">₹</div>
+                </div>
+
+                <h2 id="totalSales">₹0.00</h2>
+
+                <p class="stat-description">
+                    Completed order sales
+                </p>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <div class="stat-header">
+                    <span>Completed Orders</span>
+                    <div class="stat-icon">✓</div>
+                </div>
+
+                <h2 id="completedOrders">0</h2>
+
+                <p class="stat-description">
+                    Successfully completed
+                </p>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <div class="stat-header">
+                    <span>Cancelled Orders</span>
+                    <div class="stat-icon">×</div>
+                </div>
+
+                <h2 id="cancelledOrders">0</h2>
+
+                <p class="stat-description">
+                    Cancelled today
+                </p>
+
+            </div>
+
+        </section>
+
+
+        <!-- Main Dashboard Grid -->
+        <section class="dashboard-grid">
+
+            <!-- Order Status -->
+            <div class="card">
+
+                <div class="card-header">
+
+                    <div>
+                        <h3>Order Status</h3>
+                        <p>Today's order distribution</p>
+                    </div>
+
+                </div>
+
+                <div class="status-container">
+
+                    <div class="status-row">
+
+                        <div class="status-label">
+                            <span class="status-indicator completed"></span>
+                            Completed
+                        </div>
+
+                        <strong id="completedCount">0</strong>
+
+                    </div>
+
+
+                    <div class="status-row">
+
+                        <div class="status-label">
+                            <span class="status-indicator pending"></span>
+                            Pending
+                        </div>
+
+                        <strong id="pendingCount">0</strong>
+
+                    </div>
+
+
+                    <div class="status-row">
+
+                        <div class="status-label">
+                            <span class="status-indicator cancelled"></span>
+                            Cancelled
+                        </div>
+
+                        <strong id="cancelledCount">0</strong>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- Best Selling Product -->
+            <div class="card best-product">
+
+                <div class="card-header">
+
+                    <div>
+                        <h3>Best-Selling Product</h3>
+                        <p>Today's top product</p>
+                    </div>
+
+                </div>
+
+                <div class="product-highlight">
+
+                    <div class="product-icon">
+                        🛒
+                    </div>
+
+                    <div class="product-info">
+
+                        <h2 id="bestProduct">
+                            No sales yet
+                        </h2>
+
+                        <p>
+                            <span id="bestProductQuantity">0</span>
+                            units sold
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- Recent Orders -->
+        <section class="card recent-orders">
+
+            <div class="card-header">
+
+                <div>
+                    <h3>Recent Orders</h3>
+                    <p>Latest orders from today</p>
+                </div>
+
+                <button
+                    class="refresh-button"
+                    onclick="loadDashboard()"
+                >
+                    Refresh
+                </button>
+
+            </div>
+
+
+            <div class="table-container">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Customer</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Created At</th>
+                        </tr>
+
+                    </thead>
+
+                    <tbody id="ordersTable">
+
+                        <tr>
+                            <td colspan="5" class="loading">
+                                Loading orders...
+                            </td>
+                        </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+
+        <!-- Footer -->
+        <footer>
+
+            <span>
+                CloudMart Dashboard
+            </span>
+
+            <span>
+                Last updated:
+                <strong id="lastUpdated">Never</strong>
+            </span>
+
+        </footer>
+
+    </main>
+
+
+    <script
+        src="{{ url_for('static', filename='js/dashboard.js') }}"
+    ></script>
+
+</body>
+</html>
