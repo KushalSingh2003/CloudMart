@@ -134,6 +134,15 @@ jobs:
         aws s3 cp report.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/report-${GITHUB_RUN_ID}.zip
         aws s3 cp stock_change.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/stock_change-${GITHUB_RUN_ID}.zip
         aws s3 cp authorizer.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/authorizer-${GITHUB_RUN_ID}.zip
+    - name: Package Dashboard
+      run: |
+        cd dashboard
+        zip -r ../dashboard.zip .
+        cd ..
+    - name: Upload Dashboard Package
+      run: |
+        aws s3 cp dashboard.zip \
+         s3://${{ vars.LAMBDA_CODE_BUCKET }}/dashboard/dashboard-${GITHUB_RUN_ID}.zip
   application:
     name: Deploy Application Stack
     needs: package-lambdas
