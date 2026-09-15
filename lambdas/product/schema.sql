@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS Customers (
     email VARCHAR(255) NOT NULL UNIQUE,
     phone VARCHAR(20),
     Role ENUM('customer', 'Admin') NOT NULL DEFAULT 'customer',
+    token VARCHAR(512) UNIQUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     
 );
