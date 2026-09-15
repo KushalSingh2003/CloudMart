@@ -18,7 +18,7 @@ Parameters:
 
   KeyPairName:
     Type: AWS::EC2::KeyPair::KeyName
-    Default: kushal-singh
+    Default: cloudmart-dashboard-key
 
   AmiId:
     Type: AWS::EC2::Image::Id
