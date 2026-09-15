@@ -162,7 +162,7 @@ jobs:
 
     uses: ./.github/workflows/deploy-stack.yaml
     with:
-      stack_name: application-stack-CloudMart
+      stack_name: dashboard-stack-CloudMart
       template_file: cloudformation/dashboard-stack.yaml
       parameters_file: cloudformation/config/monitoring-parameters.json
       tags_file: cloudformation/config/tags.json
