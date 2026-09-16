@@ -400,7 +400,7 @@ def product_details(product_id):
                     p.status,
                     p.category_id,
                     c.name AS category_name,
-                    p.created_at
+                   
                 FROM Products p
                 LEFT JOIN Category c
                     ON p.category_id = c.category_id
