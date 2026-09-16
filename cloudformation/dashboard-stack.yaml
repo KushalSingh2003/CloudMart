@@ -77,8 +77,7 @@ Resources:
             Action:
             - ssm:GetParameter
             Resource:
-            - Resource:
-            - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/*"
+            - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db/*
 
   # ============================================================
   # DASHBOARD EC2 INSTANCE PROFILE
