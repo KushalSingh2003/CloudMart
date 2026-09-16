@@ -76,6 +76,7 @@ Resources:
           - Effect: Allow
             Action:
             - ssm:GetParameter
+            - ssm:GetParametersByPath
             Resource:
             - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db/*
 
