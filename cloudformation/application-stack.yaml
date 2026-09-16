@@ -563,7 +563,7 @@ Resources:
     - OrderPutMethod
     Properties:
       RestApiId: !Ref CloudMartApi
-      StageName: dev
+      StageName: !Ref Environment
   # ==========================================================
   # API GATEWAY RESOURCES
   # ==========================================================
@@ -1005,6 +1005,81 @@ Resources:
 # OUTPUTS
 # ============================================================
 
+# Outputs:
+
+#   EventBusArn:
+#     Description: CloudMart EventBridge Event Bus ARN
+#     Value: !GetAtt CloudMartEventBus.Arn
+
+#   ApiGatewayId:
+#     Description: API Gateway ID
+#     Value: !Ref CloudMartApi
+
+#   ApiGatewayUrl:
+#     Description: API Gateway URL
+#     Value: !Sub https://${CloudMartApi}.execute-api.${AWS::Region}.amazonaws.com
+
+#   SNSTopicArn:
+#     Description: SNS Topic ARN
+#     Value: !Ref CloudMartSNSTopic
+
+#   ApplicationBucketName:
+#     Description: Application S3 Bucket
+#     Value: !Ref ApplicationS3Bucket
+#   ReportsBucketName:
+#     Description: S3 bucket containing daily reports
+#     Value: !Ref ReportsBucket
+
+#   ProductLambdaName:
+#     Description: Product Lambda function name
+#     Value: !Ref ProductLambda
+#     Export:
+#       Name: !Sub cloudmart-${Environment}-ProductLambdaName
+
+#   OrderLambdaName:
+#     Description: Order Lambda function name
+#     Value: !Ref OrderLambda
+#     Export:
+#       Name: !Sub cloudmart-${Environment}-OrderLambdaName
+
+#   CheckStockLambdaName:
+#     Description: Check Stock Lambda function name
+#     Value: !Ref CheckStockLambda
+#     Export:
+#       Name: !Sub cloudmart-${Environment}-CheckStockLambdaName
+
+#   AuthorizerLambdaName:
+#     Description: Authorizer Lambda function name
+#     Value: !Ref LambdaAuthorizer
+#     Export:
+#       Name: !Sub cloudmart-${Environment}-AuthorizerLambdaName
+
+#   ReportLambdaName:
+#     Description: Report Lambda function name
+#     Value: !Ref ReportLambda
+#     Export:
+#       Name: !Sub cloudmart-${Environment}-ReportLambdaName
+
+#   ApiId:
+#     Description: CloudMart API Gateway ID
+#     Value: !Ref CloudMartApi
+#     Export:
+#       Name: !Sub cloudmart-${Environment}-ApiId
+
+#   ApiStageName:
+#     Description: CloudMart API Gateway stage
+#     Value: !Ref ApiStage
+#     Export:
+#       Name: !Sub cloudmart-${Environment}-ApiStageName
+# ============================================================
+# OUTPUTS
+# ============================================================# ============================================================
+# OUTPUTS
+# ============================================================
+# ============================================================
+# OUTPUTS
+# ============================================================
+
 Outputs:
 
   EventBusArn:
@@ -1014,6 +1089,8 @@ Outputs:
   ApiGatewayId:
     Description: API Gateway ID
     Value: !Ref CloudMartApi
+    Export:
+      Name: !Sub cloudmart-${Environment}-ApiId
 
   ApiGatewayUrl:
     Description: API Gateway URL
@@ -1026,6 +1103,37 @@ Outputs:
   ApplicationBucketName:
     Description: Application S3 Bucket
     Value: !Ref ApplicationS3Bucket
+
   ReportsBucketName:
     Description: S3 bucket containing daily reports
     Value: !Ref ReportsBucket
+
+  ProductLambdaName:
+    Description: Product Lambda function name
+    Value: !Ref ProductLambda
+    Export:
+      Name: !Sub cloudmart-${Environment}-ProductLambdaName
+
+  OrderLambdaName:
+    Description: Order Lambda function name
+    Value: !Ref OrderLambda
+    Export:
+      Name: !Sub cloudmart-${Environment}-OrderLambdaName
+
+  CheckStockLambdaName:
+    Description: Check Stock Lambda function name
+    Value: !Ref CheckStockLambda
+    Export:
+      Name: !Sub cloudmart-${Environment}-CheckStockLambdaName
+
+  AuthorizerLambdaName:
+    Description: Authorizer Lambda function name
+    Value: !Ref LambdaAuthorizer
+    Export:
+      Name: !Sub cloudmart-${Environment}-AuthorizerLambdaName
+
+  ReportLambdaName:
+    Description: Report Lambda function name
+    Value: !Ref ReportLambda
+    Export:
+      Name: !Sub cloudmart-${Environment}-ReportLambdaName

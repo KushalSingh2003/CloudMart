@@ -32,16 +32,16 @@ jobs:
   #     environment: dev
   #   secrets: inherit
 
-  # data:
-  #   name: Deploy Data Stack
-  #   needs: network
-  #   uses: ./.github/workflows/deploy-stack.yaml
-  #   with:
-  #     stack_name: data-stack-CloudMart
-  #     template_file: cloudformation/data-stack.yaml
-  #     tags_file: cloudformation/config/tags.json
-  #     environment: dev
-  #   secrets: inherit
+  data:
+    name: Deploy Data Stack
+    needs: network
+    uses: ./.github/workflows/deploy-stack.yaml
+    with:
+      stack_name: data-stack-CloudMart
+      template_file: cloudformation/data-stack.yaml
+      tags_file: cloudformation/config/tags.json
+      environment: dev
+    secrets: inherit
 
   package-lambdas:
     name: Package Lambda Functions seventh  attempt
@@ -143,19 +143,19 @@ jobs:
       run: |
         aws s3 cp dashboard.zip \
          s3://${{ vars.LAMBDA_CODE_BUCKET }}/dashboard/dashboard-${GITHUB_RUN_ID}.zip
-  # application:
-  #   name: Deploy Application Stack
-  #   needs: package-lambdas
+  application:
+    name: Deploy Application Stack
+    needs: package-lambdas
 
-  #   uses: ./.github/workflows/deploy-stack.yaml
-  #   with:
-  #     stack_name: application-stack-CloudMart
-  #     template_file: cloudformation/application-stack.yaml
-  #     parameters_file: cloudformation/config/application-parameters.json
-  #     tags_file: cloudformation/config/tags.json
-  #     environment: dev
+    uses: ./.github/workflows/deploy-stack.yaml
+    with:
+      stack_name: application-stack-CloudMart
+      template_file: cloudformation/application-stack.yaml
+      parameters_file: cloudformation/config/application-parameters.json
+      tags_file: cloudformation/config/tags.json
+      environment: dev
 
-  #   secrets: inherit
+    secrets: inherit
   monitoring:
     name: Deploy Monitoring  Stack check
     needs: package-lambdas
