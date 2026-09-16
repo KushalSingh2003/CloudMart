@@ -169,3 +169,42 @@ jobs:
       environment: dev
 
     secrets: inherit
+  dashboard-update:
+    name: Update Dashboard EC2
+    needs: monitoring
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Configure AWS credentials via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+        aws-region: ${{ vars.AWS_REGION }}
+
+    - name: Get Dashboard EC2 Instance ID
+      id: get-instance
+      run: |
+        INSTANCE_ID=$(aws cloudformation describe-stacks \
+          --stack-name dashboard-stack-CloudMart \
+          --query "Stacks[0].Outputs[?OutputKey=='DashboardInstanceId'].OutputValue" \
+          --output text)
+
+        echo "INSTANCE_ID=$INSTANCE_ID"
+        echo "instance_id=$INSTANCE_ID" >> "$GITHUB_OUTPUT"
+
+    - name: Deploy latest dashboard to EC2
+      run: |
+        aws ssm send-command \
+          --instance-ids "${{ steps.get-instance.outputs.instance_id }}" \
+          --document-name "AWS-RunShellScript" \
+          --parameters 'commands=[
+            "set -e",
+            "cd /opt/cloudmart-dashboard",
+            "aws s3 cp s3://${{ vars.LAMBDA_CODE_BUCKET }}/dashboard/dashboard-${{ github.run_id }}.zip /tmp/dashboard.zip",
+            "sudo rm -rf /opt/cloudmart-dashboard/static /opt/cloudmart-dashboard/templates /opt/cloudmart-dashboard/app.py /opt/cloudmart-dashboard/requirements.txt",
+            "sudo unzip -o /tmp/dashboard.zip -d /opt/cloudmart-dashboard",
+            "sudo /opt/cloudmart-dashboard/venv/bin/pip install -r /opt/cloudmart-dashboard/requirements.txt",
+            "sudo systemctl restart cloudmart-dashboard",
+            "sudo systemctl is-active cloudmart-dashboard"
+          ]' \
+          --region "${{ vars.AWS_REGION }}"
