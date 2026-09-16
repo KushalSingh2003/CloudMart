@@ -91,6 +91,263 @@ Resources:
       Roles:
       - !Ref DashboardEC2Role
 
+  CloudWatchDashboard:
+    Type: AWS::CloudWatch::Dashboard
+
+    Properties:
+
+      DashboardName: !Sub CloudMart-${Environment}
+
+      DashboardBody:
+        Fn::Sub:
+        - |
+          {
+            "widgets": [
+
+              {
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 24,
+                "height": 2,
+                "properties": {
+                  "markdown": "# CloudMart Monitoring Dashboard\nEnvironment: ${Environment}"
+                }
+              },
+
+              {
+                "type": "metric",
+                "x": 0,
+                "y": 2,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "title": "Lambda Invocations",
+                  "region": "${AWS::Region}",
+                  "view": "timeSeries",
+                  "stat": "Sum",
+                  "period": 300,
+                  "metrics": [
+                    [
+                      "AWS/Lambda",
+                      "Invocations",
+                      "FunctionName",
+                      "${ProductLambda}"
+                    ],
+                    [
+                      "AWS/Lambda",
+                      "Invocations",
+                      "FunctionName",
+                      "${OrderLambda}"
+                    ],
+                    [
+                      "AWS/Lambda",
+                      "Invocations",
+                      "FunctionName",
+                      "${CheckStockLambda}"
+                    ],
+                    [
+                      "AWS/Lambda",
+                      "Invocations",
+                      "FunctionName",
+                      "${AuthorizerLambda}"
+                    ],
+                    [
+                      "AWS/Lambda",
+                      "Invocations",
+                      "FunctionName",
+                      "${ReportLambda}"
+                    ]
+                  ]
+                }
+              },
+
+              {
+                "type": "metric",
+                "x": 12,
+                "y": 2,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "title": "Lambda Errors",
+                  "region": "${AWS::Region}",
+                  "view": "timeSeries",
+                  "stat": "Sum",
+                  "period": 300,
+                  "metrics": [
+                    [
+                      "AWS/Lambda",
+                      "Errors",
+                      "FunctionName",
+                      "${ProductLambda}"
+                    ],
+                    [
+                      "AWS/Lambda",
+                      "Errors",
+                      "FunctionName",
+                      "${OrderLambda}"
+                    ],
+                    [
+                      "AWS/Lambda",
+                      "Errors",
+                      "FunctionName",
+                      "${CheckStockLambda}"
+                    ],
+                    [
+                      "AWS/Lambda",
+                      "Errors",
+                      "FunctionName",
+                      "${AuthorizerLambda}"
+                    ],
+                    [
+                      "AWS/Lambda",
+                      "Errors",
+                      "FunctionName",
+                      "${ReportLambda}"
+                    ]
+                  ]
+                }
+              },
+
+              {
+                "type": "metric",
+                "x": 0,
+                "y": 8,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "title": "Lambda Duration",
+                  "region": "${AWS::Region}",
+                  "view": "timeSeries",
+                  "stat": "Average",
+                  "period": 300,
+                  "metrics": [
+                    [
+                      "AWS/Lambda",
+                      "Duration",
+                      "FunctionName",
+                      "${OrderLambda}"
+                    ],
+                    [
+                      "AWS/Lambda",
+                      "Duration",
+                      "FunctionName",
+                      "${ProductLambda}"
+                    ],
+                    [
+                      "AWS/Lambda",
+                      "Duration",
+                      "FunctionName",
+                      "${CheckStockLambda}"
+                    ],
+                    [
+                      "AWS/Lambda",
+                      "Duration",
+                      "FunctionName",
+                      "${AuthorizerLambda}"
+                    ],
+                    [
+                      "AWS/Lambda",
+                      "Duration",
+                      "FunctionName",
+                      "${ReportLambda}"
+                    ]
+                  ]
+                }
+              },
+
+              {
+                "type": "metric",
+                "x": 12,
+                "y": 8,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "title": "RDS CPU Utilization",
+                  "region": "${AWS::Region}",
+                  "view": "timeSeries",
+                  "stat": "Average",
+                  "period": 300,
+                  "metrics": [
+                    [
+                      "AWS/RDS",
+                      "CPUUtilization",
+                      "DBInstanceIdentifier",
+                      "${RDSInstance}"
+                    ]
+                  ]
+                }
+              },
+
+              {
+                "type": "metric",
+                "x": 0,
+                "y": 14,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "title": "RDS Database Connections",
+                  "region": "${AWS::Region}",
+                  "view": "timeSeries",
+                  "stat": "Average",
+                  "period": 300,
+                  "metrics": [
+                    [
+                      "AWS/RDS",
+                      "DatabaseConnections",
+                      "DBInstanceIdentifier",
+                      "${RDSInstance}"
+                    ]
+                  ]
+                }
+              },
+
+              {
+                "type": "metric",
+                "x": 12,
+                "y": 14,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "title": "Dashboard EC2 CPU",
+                  "region": "${AWS::Region}",
+                  "view": "timeSeries",
+                  "stat": "Average",
+                  "period": 300,
+                  "metrics": [
+                    [
+                      "AWS/EC2",
+                      "CPUUtilization",
+                      "InstanceId",
+                      "${DashboardInstance}"
+                    ]
+                  ]
+                }
+              }
+
+            ]
+          }
+        - ProductLambda:
+            Fn::ImportValue: !Sub cloudmart-${Environment}-ProductLambdaName
+
+          OrderLambda:
+            Fn::ImportValue: !Sub cloudmart-${Environment}-OrderLambdaName
+
+          CheckStockLambda:
+            Fn::ImportValue: !Sub cloudmart-${Environment}-CheckStockLambdaName
+
+          AuthorizerLambda:
+            Fn::ImportValue: !Sub cloudmart-${Environment}-AuthorizerLambdaName
+
+          ReportLambda:
+            Fn::ImportValue: !Sub cloudmart-${Environment}-ReportLambdaName
+
+          RDSInstance:
+            Fn::ImportValue: !Sub cloudmart-${Environment}-rds-instance-id
+
+          DashboardInstance:
+            Ref: DashboardEC2
+
   # ============================================================
   # DASHBOARD EC2
   # ============================================================

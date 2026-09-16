@@ -34,7 +34,7 @@ jobs:
 
   data:
     name: Deploy Data Stack
-    needs: network
+
     uses: ./.github/workflows/deploy-stack.yaml
     with:
       stack_name: data-stack-CloudMart
@@ -45,6 +45,7 @@ jobs:
 
   package-lambdas:
     name: Package Lambda Functions seventh  attempt
+    needs: data
 
     runs-on: ubuntu-latest
 
@@ -158,7 +159,7 @@ jobs:
     secrets: inherit
   monitoring:
     name: Deploy Monitoring  Stack check
-    needs: package-lambdas
+    needs: application
 
     uses: ./.github/workflows/deploy-stack.yaml
     with:
