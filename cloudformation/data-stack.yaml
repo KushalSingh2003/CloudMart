@@ -53,6 +53,9 @@ Parameters:
     Default: 1
     MinValue: 0
     Description: Number of days to retain automated backups.
+  GitHubRunId:
+    Type: String
+    Description: GitHub Actions run ID
 # ============================================================================
 # RESOURCES
 # ============================================================================
