@@ -399,8 +399,7 @@ def product_details(product_id):
                     p.stock,
                     p.status,
                     p.category_id,
-                    c.name AS category_name,
-                   
+                    c.name AS category_name
                 FROM Products p
                 LEFT JOIN Category c
                     ON p.category_id = c.category_id
