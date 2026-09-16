@@ -418,7 +418,236 @@ def product_details(product_id):
 
     finally:
         connection.close()
+@app.route("/customers")
+def customers():
 
+    search = request.args.get("search", "").strip()
+
+    conn = get_db_connection()
+
+    try:
+        with conn.cursor() as cursor:
+
+            if search:
+
+                cursor.execute("""
+                    SELECT
+                        user_id,
+                        name,
+                        email,
+                        phone,
+                        Role,
+                        created_at
+                    FROM Customers
+                    WHERE name LIKE %s
+                       OR email LIKE %s
+                       OR phone LIKE %s
+                    ORDER BY user_id DESC
+                """, (
+                    f"%{search}%",
+                    f"%{search}%",
+                    f"%{search}%"
+                ))
+
+            else:
+
+                cursor.execute("""
+                    SELECT
+                        user_id,
+                        name,
+                        email,
+                        phone,
+                        Role,
+                        created_at
+                    FROM Customers
+                    ORDER BY user_id DESC
+                """)
+
+            customers = cursor.fetchall()
+
+        return render_template(
+            "customers.html",
+            customers=customers,
+            search=search
+        )
+
+    finally:
+        conn.close()
+
+
+@app.route("/customers/<int:user_id>")
+def customer_details(user_id):
+
+    conn = get_db_connection()
+
+    try:
+        with conn.cursor() as cursor:
+
+            cursor.execute("""
+                SELECT
+                    user_id,
+                    name,
+                    email,
+                    phone,
+                    Role,
+                    created_at
+                FROM Customers
+                WHERE user_id = %s
+            """, (user_id,))
+
+            customer = cursor.fetchone()
+
+            if not customer:
+                return "Customer not found", 404
+
+            cursor.execute("""
+                SELECT
+                    order_id,
+                    total_amount,
+                    status,
+                    created_at,
+                    changed_at,
+                    cancelled_at,
+                    cancel_reason
+                FROM Orders
+                WHERE user_id = %s
+                  AND is_deleted = 0
+                ORDER BY created_at DESC
+            """, (user_id,))
+
+            orders = cursor.fetchall()
+
+        return render_template(
+            "customer-details.html",
+            customer=customer,
+            orders=orders
+        )
+
+    finally:
+        conn.close()
+@app.route("/orders")
+def orders():
+
+    search = request.args.get("search", "").strip()
+
+    conn = get_db_connection()
+
+    try:
+        with conn.cursor() as cursor:
+
+            if search:
+
+                cursor.execute("""
+                    SELECT
+                        o.order_id,
+                        o.user_id,
+                        c.name AS customer_name,
+                        o.total_amount,
+                        o.status,
+                        o.created_at
+                    FROM Orders o
+                    LEFT JOIN Customers c
+                        ON o.user_id = c.user_id
+                    WHERE o.is_deleted = 0
+                      AND (
+                          CAST(o.order_id AS CHAR) LIKE %s
+                          OR c.name LIKE %s
+                          OR o.status LIKE %s
+                      )
+                    ORDER BY o.created_at DESC
+                """, (
+                    f"%{search}%",
+                    f"%{search}%",
+                    f"%{search}%"
+                ))
+
+            else:
+
+                cursor.execute("""
+                    SELECT
+                        o.order_id,
+                        o.user_id,
+                        c.name AS customer_name,
+                        o.total_amount,
+                        o.status,
+                        o.created_at
+                    FROM Orders o
+                    LEFT JOIN Customers c
+                        ON o.user_id = c.user_id
+                    WHERE o.is_deleted = 0
+                    ORDER BY o.created_at DESC
+                """)
+
+            orders = cursor.fetchall()
+
+        return render_template(
+            "orders.html",
+            orders=orders,
+            search=search
+        )
+
+    finally:
+        conn.close()
+
+
+@app.route("/orders/<int:order_id>")
+def order_details(order_id):
+
+    conn = get_db_connection()
+
+    try:
+        with conn.cursor() as cursor:
+
+            # Order information
+            cursor.execute("""
+                SELECT
+                    o.order_id,
+                    o.user_id,
+                    c.name AS customer_name,
+                    c.email AS customer_email,
+                    c.phone AS customer_phone,
+                    o.total_amount,
+                    o.status,
+                    o.is_deleted,
+                    o.created_at,
+                    o.changed_at,
+                    o.cancelled_at,
+                    o.cancel_reason
+                FROM Orders o
+                LEFT JOIN Customers c
+                    ON o.user_id = c.user_id
+                WHERE o.order_id = %s
+            """, (order_id,))
+
+            order = cursor.fetchone()
+
+            if not order:
+                return "Order not found", 404
+
+            # Order items
+            cursor.execute("""
+                SELECT
+                    oi.order_item_id,
+                    oi.product_id,
+                    oi.product_name,
+                    oi.quantity,
+                    oi.price,
+                    (oi.quantity * oi.price) AS subtotal
+                FROM Orders_Items oi
+                WHERE oi.order_id = %s
+                ORDER BY oi.order_item_id
+            """, (order_id,))
+
+            items = cursor.fetchall()
+
+        return render_template(
+            "order-details.html",
+            order=order,
+            items=items
+        )
+
+    finally:
+        conn.close()
 
 if __name__ == "__main__":
     app.run(

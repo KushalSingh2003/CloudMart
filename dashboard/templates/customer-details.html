@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>
+        {{ customer.name }} - CloudMart
+    </title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/dashboard.css') }}">
+
+</head>
+
+
+<body>
+
+<div class="app-container">
+
+
+    <!-- SIDEBAR -->
+
+    <aside class="sidebar">
+
+        <div class="brand">
+
+            <div class="brand-icon">
+                C
+            </div>
+
+            <div>
+                <h2>CloudMart</h2>
+                <span>Admin Dashboard</span>
+            </div>
+
+        </div>
+
+
+        <nav class="navigation">
+
+            <a href="/" class="nav-item">
+                <span class="nav-icon">⌂</span>
+                Dashboard
+            </a>
+
+            <a href="/products" class="nav-item">
+                <span class="nav-icon">▦</span>
+                Products
+            </a>
+
+            <a href="/customers"
+               class="nav-item active">
+
+                <span class="nav-icon">♙</span>
+                Customers
+
+            </a>
+
+            <a href="/orders" class="nav-item">
+                <span class="nav-icon">◫</span>
+                Orders
+            </a>
+
+        </nav>
+
+    </aside>
+
+
+    <!-- MAIN -->
+
+    <main class="main-content">
+
+
+        <header class="topbar">
+
+            <div>
+
+                <h1>
+                    Customer Details
+                </h1>
+
+                <p>
+                    Detailed information about this customer.
+                </p>
+
+            </div>
+
+        </header>
+
+
+        <!-- CUSTOMER INFORMATION -->
+
+        <section class="card product-details-card">
+
+            <div class="card-header">
+
+                <div>
+
+                    <h3>
+                        {{ customer.name }}
+                    </h3>
+
+                    <p>
+                        Customer #{{ customer.user_id }}
+                    </p>
+
+                </div>
+
+
+                <span class="status status-neutral">
+
+                    {{ customer.Role }}
+
+                </span>
+
+            </div>
+
+
+            <div class="product-details-grid">
+
+
+                <div class="detail-item">
+
+                    <span>
+                        Customer ID
+                    </span>
+
+                    <strong>
+                        #{{ customer.user_id }}
+                    </strong>
+
+                </div>
+
+
+                <div class="detail-item">
+
+                    <span>
+                        Name
+                    </span>
+
+                    <strong>
+                        {{ customer.name }}
+                    </strong>
+
+                </div>
+
+
+                <div class="detail-item">
+
+                    <span>
+                        Email
+                    </span>
+
+                    <strong>
+                        {{ customer.email }}
+                    </strong>
+
+                </div>
+
+
+                <div class="detail-item">
+
+                    <span>
+                        Phone
+                    </span>
+
+                    <strong>
+                        {{ customer.phone or "Not provided" }}
+                    </strong>
+
+                </div>
+
+
+                <div class="detail-item">
+
+                    <span>
+                        Role
+                    </span>
+
+                    <strong>
+                        {{ customer.Role }}
+                    </strong>
+
+                </div>
+
+
+                <div class="detail-item">
+
+                    <span>
+                        Joined
+                    </span>
+
+                    <strong>
+                        {{ customer.created_at }}
+                    </strong>
+
+                </div>
+
+
+            </div>
+
+        </section>
+
+
+        <!-- CUSTOMER ORDERS -->
+
+        <section class="card">
+
+            <div class="card-header">
+
+                <div>
+
+                    <h3>
+                        Order History
+                    </h3>
+
+                    <p>
+                        {{ orders|length }} orders
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <div class="table-wrapper">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+
+                            <th>Order ID</th>
+                            <th>Total</th>
+                            <th>Status</th>
+                            <th>Created</th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody>
+
+                    {% for order in orders %}
+
+                        <tr>
+
+                            <td>
+
+                                <a
+                                    href="{{ url_for(
+                                        'order_details',
+                                        order_id=order.order_id
+                                    ) }}"
+                                    class="product-link"
+                                >
+
+                                    <strong>
+                                        #{{ order.order_id }}
+                                    </strong>
+
+                                </a>
+
+                            </td>
+
+
+                            <td>
+
+                                ₹{{ "%.2f"|format(
+                                    order.total_amount|float
+                                ) }}
+
+                            </td>
+
+
+                            <td>
+
+                                <span class="status status-neutral">
+
+                                    {{ order.status }}
+
+                                </span>
+
+                            </td>
+
+
+                            <td>
+
+                                {{ order.created_at }}
+
+                            </td>
+
+                        </tr>
+
+
+                    {% else %}
+
+                        <tr>
+
+                            <td colspan="4">
+
+                                <div class="empty-state compact">
+
+                                    <h4>
+                                        No orders found
+                                    </h4>
+
+                                    <p>
+                                        This customer has not placed any orders.
+                                    </p>
+
+                                </div>
+
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+
+        <div class="product-actions">
+
+            <a href="/customers"
+               class="back-button">
+
+                ← Back to Customers
+
+            </a>
+
+        </div>
+
+
+        <footer>
+
+            <span>
+                CloudMart Dashboard
+            </span>
+
+            <span>
+                Connected to RDS MySQL
+            </span>
+
+        </footer>
+
+
+    </main>
+
+</div>
+
+</body>
+
+</html>
