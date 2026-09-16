@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -210,4 +210,353 @@
 </div>
 
 </body>
+</html> -->
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Products - CloudMart</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/dashboard.css') }}"
+    >
+
+</head>
+
+
+<body>
+
+<div class="app-container">
+
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+
+        <div class="brand">
+
+            <div class="brand-icon">
+                C
+            </div>
+
+            <div>
+
+                <h2>CloudMart</h2>
+
+                <span>
+                    Admin Dashboard
+                </span>
+
+            </div>
+
+        </div>
+
+
+        <!-- Navigation -->
+        <nav class="navigation">
+
+            <a href="/" class="nav-item">
+
+                <span class="nav-icon">
+                    ⌂
+                </span>
+
+                Dashboard
+
+            </a>
+
+
+            <a href="/products" class="nav-item active">
+
+                <span class="nav-icon">
+                    ▦
+                </span>
+
+                Products
+
+            </a>
+
+
+            <a href="/customers" class="nav-item">
+
+                <span class="nav-icon">
+                    ♙
+                </span>
+
+                Customers
+
+            </a>
+
+
+            <a href="/orders" class="nav-item">
+
+                <span class="nav-icon">
+                    ◫
+                </span>
+
+                Orders
+
+            </a>
+
+        </nav>
+
+    </aside>
+
+
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+
+        <!-- Header -->
+        <header class="topbar">
+
+            <div>
+
+                <h1>
+                    Products
+                </h1>
+
+                <p>
+                    Manage and monitor your CloudMart products.
+                </p>
+
+            </div>
+
+        </header>
+
+
+
+        <!-- Product Catalogue -->
+        <section class="card">
+
+
+            <div class="card-header">
+
+
+                <div>
+
+                    <h3>
+                        Product Catalogue
+                    </h3>
+
+                    <p>
+                        {{ products|length }} products found
+                    </p>
+
+                </div>
+
+
+
+                <!-- Search -->
+                <form
+                    method="GET"
+                    action="/products"
+                    class="search-form"
+                >
+
+                    <input
+                        type="text"
+                        name="search"
+                        value="{{ search }}"
+                        placeholder="Search products..."
+                    >
+
+                    <button type="submit">
+                        Search
+                    </button>
+
+                </form>
+
+            </div>
+
+
+
+            <!-- Product Table -->
+            <div class="table-wrapper">
+
+                <table>
+
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                ID
+                            </th>
+
+                            <th>
+                                Product
+                            </th>
+
+                            <th>
+                                Category
+                            </th>
+
+                            <th>
+                                Price
+                            </th>
+
+                            <th>
+                                Stock
+                            </th>
+
+                            <th>
+                                Status
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+
+
+                    <tbody>
+
+
+                    {% for product in products %}
+
+                        <tr>
+
+
+                            <!-- Product ID -->
+                            <td>
+
+                                <strong>
+                                    #{{ product.product_id }}
+                                </strong>
+
+                            </td>
+
+
+
+                            <!-- Product Name -->
+                            <td>
+
+                                <a
+                                    href="{{ url_for('product_details', product_id=product.product_id) }}"
+                                    class="product-link"
+                                >
+
+                                    <strong>
+                                        {{ product.name }}
+                                    </strong>
+
+                                </a>
+
+
+                                {% if product.description %}
+
+                                    <span class="table-description">
+
+                                        {{ product.description }}
+
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+
+
+                            <!-- Category -->
+                            <td>
+
+                                {{ product.category_name or "Uncategorized" }}
+
+                            </td>
+
+
+
+                            <!-- Price -->
+                            <td>
+
+                                ₹{{ "%.2f"|format(product.price|float) }}
+
+                            </td>
+
+
+
+                            <!-- Stock -->
+                            <td>
+
+                                <span
+                                    class="{% if product.stock == 0 %}stock-critical{% elif product.stock <= 5 %}stock-warning{% endif %}"
+                                >
+
+                                    {{ product.stock }}
+
+                                </span>
+
+                            </td>
+
+
+
+                            <!-- Status -->
+                            <td>
+
+                                <span class="status status-neutral">
+
+                                    {{ product.status }}
+
+                                </span>
+
+                            </td>
+
+
+                        </tr>
+
+
+                    {% else %}
+
+
+                        <!-- Empty State -->
+                        <tr>
+
+                            <td colspan="6">
+
+                                <div class="empty-state compact">
+
+                                    <h4>
+                                        No products found
+                                    </h4>
+
+                                    <p>
+                                        Try a different search.
+                                    </p>
+
+                                </div>
+
+                            </td>
+
+                        </tr>
+
+
+                    {% endfor %}
+
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+
+        </section>
+
+
+    </main>
+
+
+</div>
+
+</body>
+
 </html>

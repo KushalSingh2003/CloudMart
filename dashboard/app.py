@@ -382,6 +382,43 @@ def products():
 
     finally:
         conn.close()
+@app.route("/products/<int:product_id>")
+def product_details(product_id):
+
+    connection = get_db_connection()
+
+    try:
+        with connection.cursor() as cursor:
+
+            cursor.execute("""
+                SELECT
+                    p.product_id,
+                    p.name,
+                    p.description,
+                    p.price,
+                    p.stock,
+                    p.status,
+                    p.category_id,
+                    c.name AS category_name,
+                    p.created_at
+                FROM Products p
+                LEFT JOIN Category c
+                    ON p.category_id = c.category_id
+                WHERE p.product_id = %s
+            """, (product_id,))
+
+            product = cursor.fetchone()
+
+            if not product:
+                return "Product not found", 404
+
+            return render_template(
+                "product-details.html",
+                product=product
+            )
+
+    finally:
+        connection.close()
 
 
 if __name__ == "__main__":
