@@ -1121,6 +1121,8 @@ Outputs:
   SNSTopicArn:
     Description: SNS Topic ARN
     Value: !Ref CloudMartSNSTopic
+    Export:
+      Name: !Sub cloudmart-${Environment}-SNSTopicArn
 
   ApplicationBucketName:
     Description: Application S3 Bucket

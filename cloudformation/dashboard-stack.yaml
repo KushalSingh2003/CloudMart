@@ -90,6 +90,170 @@ Resources:
     Properties:
       Roles:
       - !Ref DashboardEC2Role
+    # ==========================================================
+    # CLOUDWATCH ALARMS
+    # ==========================================================
+
+  ProductLambdaErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub cloudmart-${Environment}-product-lambda-errors
+      AlarmDescription: Product Lambda errors detected
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+      - Name: FunctionName
+        Value:
+          Fn::ImportValue: !Sub cloudmart-${Environment}-ProductLambdaName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+      - Fn::ImportValue: !Sub cloudmart-${Environment}-SNSTopicArn
+
+  OrderLambdaErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub cloudmart-${Environment}-order-lambda-errors
+      AlarmDescription: Order Lambda errors detected
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+      - Name: FunctionName
+        Value:
+          Fn::ImportValue: !Sub cloudmart-${Environment}-OrderLambdaName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+      - Fn::ImportValue: !Sub cloudmart-${Environment}-SNSTopicArn
+
+  CheckStockLambdaErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub cloudmart-${Environment}-check-stock-lambda-errors
+      AlarmDescription: Check Stock Lambda errors detected
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+      - Name: FunctionName
+        Value:
+          Fn::ImportValue: !Sub cloudmart-${Environment}-CheckStockLambdaName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+      - Fn::ImportValue: !Sub cloudmart-${Environment}-SNSTopicArn
+
+  AuthorizerLambdaErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub cloudmart-${Environment}-authorizer-lambda-errors
+      AlarmDescription: Authorizer Lambda errors detected
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+      - Name: FunctionName
+        Value:
+          Fn::ImportValue: !Sub cloudmart-${Environment}-AuthorizerLambdaName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+      - Fn::ImportValue: !Sub cloudmart-${Environment}-SNSTopicArn
+
+  ReportLambdaErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub cloudmart-${Environment}-report-lambda-errors
+      AlarmDescription: Report Lambda errors detected
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+      - Name: FunctionName
+        Value:
+          Fn::ImportValue: !Sub cloudmart-${Environment}-ReportLambdaName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+      - Fn::ImportValue: !Sub cloudmart-${Environment}-SNSTopicArn
+
+  ApiGatewayLatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub cloudmart-${Environment}-api-p99-latency
+      AlarmDescription: API Gateway P99 latency is too high
+      Namespace: AWS/ApiGateway
+      MetricName: Latency
+      Dimensions:
+      - Name: ApiName
+        Value: !Sub cloudmart-${Environment}-api
+      - Name: Stage
+        Value: !Ref Environment
+      ExtendedStatistic: p99
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 3000
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+      - Fn::ImportValue: !Sub cloudmart-${Environment}-SNSTopicArn
+
+  RDSCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub cloudmart-${Environment}-rds-cpu
+      AlarmDescription: RDS CPU utilization is high
+      Namespace: AWS/RDS
+      MetricName: CPUUtilization
+      Dimensions:
+      - Name: DBInstanceIdentifier
+        Value:
+          Fn::ImportValue: !Sub cloudmart-${Environment}-rds-instance-id
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+      - Fn::ImportValue: !Sub cloudmart-${Environment}-SNSTopicArn
+
+  RDSConnectionsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub cloudmart-${Environment}-rds-connections
+      AlarmDescription: RDS database connections are high
+      Namespace: AWS/RDS
+      MetricName: DatabaseConnections
+      Dimensions:
+      - Name: DBInstanceIdentifier
+        Value:
+          Fn::ImportValue: !Sub cloudmart-${Environment}-rds-instance-id
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+      - Fn::ImportValue: !Sub cloudmart-${Environment}-SNSTopicArn
 
   CloudWatchDashboard:
     Type: AWS::CloudWatch::Dashboard

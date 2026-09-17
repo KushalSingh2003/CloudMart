@@ -144,6 +144,7 @@ jobs:
          s3://${{ vars.LAMBDA_CODE_BUCKET }}/dashboard/dashboard-${GITHUB_RUN_ID}.zip
   application:
     name: Deploy Application Stack
+    needs: package-lambdas
 
     uses: ./.github/workflows/deploy-stack.yaml
     with:
