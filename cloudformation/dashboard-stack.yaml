@@ -93,6 +93,10 @@ Resources:
 
   SystemDegradedAlarm:
     Type: AWS::CloudWatch::CompositeAlarm
+    DependsOn:
+    - ProductLambdaErrorsAlarm
+    - OrderLambdaErrorsAlarm
+    - RDSCPUAlarm
     Properties:
       AlarmName: !Sub cloudmart-${Environment}-system-degraded
       AlarmDescription: CloudMart system degradation detected
