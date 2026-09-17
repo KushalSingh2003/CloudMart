@@ -32,16 +32,16 @@ jobs:
   #     environment: dev
   #   secrets: inherit
 
-  data:
-    name: Deploy Data Stack
+  # data:
+  #   name: Deploy Data Stack
 
-    uses: ./.github/workflows/deploy-stack.yaml
-    with:
-      stack_name: data-stack-CloudMart
-      template_file: cloudformation/data-stack.yaml
-      tags_file: cloudformation/config/tags.json
-      environment: dev
-    secrets: inherit
+  #   uses: ./.github/workflows/deploy-stack.yaml
+  #   with:
+  #     stack_name: data-stack-CloudMart
+  #     template_file: cloudformation/data-stack.yaml
+  #     tags_file: cloudformation/config/tags.json
+  #     environment: dev
+  #   secrets: inherit
 
   package-lambdas:
     name: Package Lambda Functions seventh  attempt
