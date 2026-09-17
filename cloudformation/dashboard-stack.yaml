@@ -101,7 +101,7 @@ Resources:
       AlarmName: !Sub cloudmart-${Environment}-system-degraded
       AlarmDescription: CloudMart system degradation detected
 
-      AlarmRule: !Sub ALARM('cloudmart-${Environment}-product-lambda-errors') OR ALARM('cloudmart-${Environment}-order-lambda-errors') OR ALARM('cloudmart-${Environment}-rds-cpu') OR ALARM('cloudmart-${Environment}-order-failure-rate')
+      AlarmRule: !Sub ALARM('cloudmart-${Environment}-product-lambda-errors') OR ALARM('cloudmart-${Environment}-order-lambda-errors') OR ALARM('cloudmart-${Environment}-rds-cpu') )
 
       ActionsEnabled: true
 
