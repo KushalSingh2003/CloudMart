@@ -859,7 +859,24 @@ Resources:
       Tags:
       - Key: Name
         Value: !Sub cloudmart-${Environment}-notifications
+  CloudMartSNSTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+      - !Ref CloudMartSNSTopic
 
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Sid: AllowCloudWatchAlarms
+          Effect: Allow
+          Principal:
+            Service: cloudwatch.amazonaws.com
+          Action: sns:Publish
+          Resource: !Ref CloudMartSNSTopic
+          Condition:
+            StringEquals:
+              aws:SourceAccount: !Ref AWS::AccountId
   # ==========================================================
   # SNS SUBSCRIPTION
   # ==========================================================
