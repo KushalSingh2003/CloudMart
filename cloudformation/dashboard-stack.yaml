@@ -438,7 +438,7 @@ Resources:
           ReportLambda:
             Fn::ImportValue: !Sub cloudmart-${Environment}-ReportLambdaName
           ApiGatewayName:
-            Fn::ImportValue: !Sub cloudmart-${Environment}-ApiGatewayName
+            Fn::Sub: cloudmart-${Environment}-api
 
           ApiGatewayStage:
             Fn::Sub: ${Environment}
