@@ -8,11 +8,6 @@ Parameters:
   GitHubRunId:
     Type: String
 
-  AuthToken:
-    Type: String
-    NoEcho: true
-    Default: cloudmart-auth-token
-
   Environment:
     Type: String
     Default: dev
