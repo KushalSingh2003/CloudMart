@@ -90,6 +90,20 @@ Resources:
     Properties:
       Roles:
       - !Ref DashboardEC2Role
+
+  SystemDegradedAlarm:
+    Type: AWS::CloudWatch::CompositeAlarm
+    Properties:
+      AlarmName: !Sub cloudmart-${Environment}-system-degraded
+      AlarmDescription: CloudMart system degradation detected
+
+      AlarmRule: !Sub >
+        ALARM('cloudmart-${Environment}-product-lambda-errors') OR ALARM('cloudmart-${Environment}-order-lambda-errors') OR ALARM('cloudmart-${Environment}-rds-cpu') OR ALARM('cloudmart-${Environment}-order-failure-rate')
+
+      ActionsEnabled: true
+
+      AlarmActions:
+      - Fn::ImportValue: !Sub cloudmart-${Environment}-SNSTopicArn
     # ==========================================================
     # CLOUDWATCH ALARMS
     # ==========================================================
@@ -278,6 +292,29 @@ Resources:
                   "markdown": "# CloudMart Monitoring Dashboard\nEnvironment: ${Environment}"
                 }
               },
+              {
+                "type": "metric",
+                "x": 0,
+                "y": 32,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "title": "Estimated AWS Charges",
+                  "region": "us-east-1",
+                  "view": "timeSeries",
+                  "stat": "Maximum",
+                  "period": 21600,
+                  "metrics": [
+                    [
+                      "AWS/Billing",
+                      "EstimatedCharges",
+                      "Currency",
+                      "USD"
+                    ]
+                  ]
+                }
+              },
+
 
               {
                 "type": "metric",
