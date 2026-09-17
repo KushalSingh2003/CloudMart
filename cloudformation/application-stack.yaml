@@ -877,6 +877,15 @@ Resources:
           Condition:
             StringEquals:
               aws:SourceAccount: !Ref AWS::AccountId
+        - Sid: AllowEventBridge
+          Effect: Allow
+          Principal:
+            Service: events.amazonaws.com
+          Action: sns:Publish
+          Resource: !Ref CloudMartSNSTopic
+          Condition:
+            StringEquals:
+              aws:SourceAccount: !Ref AWS::AccountId
   # ==========================================================
   # SNS SUBSCRIPTION
   # ==========================================================
