@@ -1161,6 +1161,12 @@ Outputs:
       Name: !Sub cloudmart-${Environment}-ReportLambdaName
   ApiGatewayName:
     Description: API Gateway name
-    Value: !Ref CloudMartApi
+    Value: !Sub cloudmart-${Environment}-api
     Export:
       Name: !Sub cloudmart-${Environment}-ApiGatewayName
+
+  ApiStageName:
+    Description: API Gateway stage
+    Value: !Ref Environment
+    Export:
+      Name: !Sub cloudmart-${Environment}-ApiStageName
