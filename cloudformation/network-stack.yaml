@@ -372,9 +372,9 @@ Resources:
       SecurityGroupIds:
       - !Ref VPCEndpointSecurityGroup
 
-    Tags:
-    - Key: Name
-      Value: !Sub cloudmart-${Environment}-cloudwatch-monitoring-endpoint
+      Tags:
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-cloudwatch-monitoring-endpoint
 
   # ============================================================================
   # EVENTBRIDGE INTERFACE ENDPOINT
