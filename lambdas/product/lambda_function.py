@@ -880,6 +880,7 @@ import boto3
 import pymysql
 
 
+
 # ------------------------------------------------------------
 # Environment variables
 # ------------------------------------------------------------
@@ -892,6 +893,7 @@ DB_PASSWORD_PARAMETER = os.environ["DB_PASSWORD_PARAMETER"]
 
 ssm = boto3.client("ssm")
 events = boto3.client("events")
+cloudwatch = boto3.client("cloudwatch")
 LOW_STOCK_THRESHOLD = 5
 
 
@@ -922,6 +924,23 @@ def get_connection():
         autocommit=False
     )
 
+def publish_metric(metric_name):
+    try:
+        cloudwatch.put_metric_data(
+            Namespace="CloudMart/Business",
+            MetricData=[
+                {
+                    "MetricName": metric_name,
+                    "Value": 1,
+                    "Unit": "Count"
+                }
+            ]
+        )
+
+        print(f"CloudWatch metric published: {metric_name}")
+
+    except Exception as e:
+        print(f"CloudWatch metric error for {metric_name}: {str(e)}")
 
 # ------------------------------------------------------------
 # Initialize database using schema.sql
@@ -1450,9 +1469,11 @@ def lambda_handler(event, context):
                 )
 
                 new_product_id = cursor.lastrowid
+                
 
 
             connection.commit()
+            publish_metric("ProductsAdded")
 
             return response(
                 201,
@@ -1812,6 +1833,7 @@ def lambda_handler(event, context):
 
 
             connection.commit()
+            publish_metric("ProductsDeleted")
 
             return response(
                 200,

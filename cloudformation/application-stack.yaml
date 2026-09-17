@@ -82,7 +82,18 @@ Resources:
             Action:
             - events:PutEvents
             Resource: !GetAtt CloudMartEventBus.Arn
-
+      - PolicyName: CloudWatchBusinessMetrics
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cloudwatch:PutMetricData
+              Resource: "*"
+              Condition:
+                StringEquals:
+            cloudwatch:namespace: "CloudMart/Business"
+ 
       Tags:
       - Key: Name
         Value: !Sub cloudmart-${Environment}-order-lambda-role
@@ -130,6 +141,17 @@ Resources:
             Action:
             - events:PutEvents
             Resource: !GetAtt CloudMartEventBus.Arn
+      - PolicyName: CloudWatchBusinessMetrics
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - cloudwatch:PutMetricData
+            Resource: "*"
+            Condition:
+              StringEquals:
+                cloudwatch:namespace: "CloudMart/Business"
 
       Tags:
       - Key: Name
