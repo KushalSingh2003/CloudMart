@@ -916,16 +916,58 @@ Resources:
         - OrderConfirmed
 
       State: ENABLED
-
       Targets:
-
       - Arn: !Ref CloudMartSNSTopic
         Id: OrderSNSTarget
+
+        InputTransformer:
+          InputPathsMap:
+            eventType: "$.detail-type"
+            source: "$.source"
+            time: "$.time"
+            orderId: "$.detail.order_id"
+            customerId: "$.detail.customer_id"
+            totalAmount: "$.detail.total_amount"
+            status: "$.detail.status"
+            oldStatus: "$.detail.old_status"
+            newStatus: "$.detail.new_status"
+            productId: "$.detail.product_id"
+            requestedQuantity: "$.detail.requested_quantity"
+            availableStock: "$.detail.available_stock"
+            reason: "$.detail.reason"
+
+          InputTemplate: |
+            "================================================
+            ☁️ CLOUDMART ORDER NOTIFICATION
+            =================================================
+
+            Event Type        : <eventType>
+            Source            : <source>
+            Time              : <time>
+
+            ---------------- ORDER DETAILS ----------------
+
+            Order ID          : <orderId>
+            Customer ID       : <customerId>
+            Total Amount      : ₹<totalAmount>
+            Status            : <status>
+            Previous Status   : <oldStatus>
+            New Status        : <newStatus>
+
+            ---------------- ADDITIONAL -------------------
+
+            Product ID        : <productId>
+            Requested Qty     : <requestedQuantity>
+            Available Stock   : <availableStock>
+            Reason            : <reason>
+
+            =================================================
+            This is an automated notification from CloudMart.
+            ================================================="
+
   OrderSNSTopicPolicy:
     Type: AWS::SNS::TopicPolicy
-
     Properties:
-
       Topics:
       - !Ref CloudMartSNSTopic
 
@@ -1017,6 +1059,35 @@ Resources:
       Targets:
       - Arn: !Ref CloudMartSNSTopic
         Id: LowStockSNSTarget
+
+        InputTransformer:
+          InputPathsMap:
+            productId: "$.detail.ProductID"
+            stock: "$.detail.Stock"
+            threshold: "$.detail.Threshold"
+            time: "$.time"
+
+          InputTemplate: |
+            "================================================
+            ⚠️ CLOUDMART LOW STOCK ALERT
+            =================================================
+
+            Alert Type      : LOW STOCK ALERT
+            Time            : <time>
+
+            ---------------- PRODUCT DETAILS --------------
+
+            Product ID      : <productId>
+            Current Stock   : <stock>
+            Threshold       : <threshold>
+
+            Status          : ACTION REQUIRED
+
+            =================================================
+            Please review the inventory and restock this product.
+            This is an automated notification from CloudMart.
+            ================================================="
+
   LowStockSNSTopicPolicy:
     Type: AWS::SNS::TopicPolicy
 
