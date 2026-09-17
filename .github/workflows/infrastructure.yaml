@@ -45,7 +45,6 @@ jobs:
 
   package-lambdas:
     name: Package Lambda Functions seventh  attempt
-    needs: data
 
     runs-on: ubuntu-latest
 
