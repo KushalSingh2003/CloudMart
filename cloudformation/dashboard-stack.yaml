@@ -363,7 +363,7 @@ Resources:
                 ]
               }
             },
-                          ,
+                        
               {
                 "type": "metric",
                 "x": 0,
