@@ -11,6 +11,7 @@ Parameters:
   AuthToken:
     Type: String
     NoEcho: true
+    Default: cloudmart-auth-token
 
   Environment:
     Type: String
@@ -357,6 +358,28 @@ Resources:
       Tags:
       - Key: Name
         Value: !Sub cloudmart-${Environment}-logs-endpoint
+    # ============================================================================
+    # CLOUDWATCH MONITORING INTERFACE ENDPOINT
+    # ============================================================================
+
+  CloudWatchMonitoringVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref CloudMartVPC
+      VpcEndpointType: Interface
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.monitoring
+      PrivateDnsEnabled: true
+
+      SubnetIds:
+      - !Ref PrivateSubnetA
+      - !Ref PrivateSubnetB
+
+      SecurityGroupIds:
+      - !Ref VPCEndpointSecurityGroup
+
+    Tags:
+    - Key: Name
+      Value: !Sub cloudmart-${Environment}-cloudwatch-monitoring-endpoint
 
   # ============================================================================
   # EVENTBRIDGE INTERFACE ENDPOINT
