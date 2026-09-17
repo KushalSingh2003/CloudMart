@@ -86,14 +86,14 @@ Resources:
         PolicyDocument:
           Version: '2012-10-17'
           Statement:
-            - Effect: Allow
-              Action:
-                - cloudwatch:PutMetricData
-              Resource: "*"
-              Condition:
-                StringEquals:
-            cloudwatch:namespace: "CloudMart/Business"
- 
+          - Effect: Allow
+            Action:
+            - cloudwatch:PutMetricData
+            Resource: "*"
+            Condition:
+              StringEquals:
+                cloudwatch:namespace: "CloudMart/Business"
+
       Tags:
       - Key: Name
         Value: !Sub cloudmart-${Environment}-order-lambda-role
