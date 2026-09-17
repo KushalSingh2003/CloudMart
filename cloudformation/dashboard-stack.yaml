@@ -323,7 +323,46 @@ Resources:
                     ]
                   ]
                 }
+              },
+              {
+            "type": "metric",
+            "x": 0,
+            "y": 20,
+            "width": 12,
+            "height": 6,
+            "properties": {
+              "title": "Order Metrics",
+              "region": "${AWS::Region}",
+              "view": "timeSeries",
+              "stat": "Sum",
+              "period": 300,
+              "metrics": [
+                [ "CloudMart/Business", "OrdersCreated" ],
+                [ "CloudMart/Business", "OrdersConfirmed" ],
+                [ "CloudMart/Business", "OrdersCompleted" ],
+                [ "CloudMart/Business", "OrdersFailed" ],
+                [ "CloudMart/Business", "OrdersCancelled" ]
+              ]
+            }
+          },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 20,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "Product Metrics",
+                "region": "${AWS::Region}",
+                "view": "timeSeries",
+                "stat": "Sum",
+                "period": 300,
+                "metrics": [
+                  [ "CloudMart/Business", "ProductsAdded" ],
+                  [ "CloudMart/Business", "ProductsDeleted" ]
+                ]
               }
+            }
 
             ]
           }
