@@ -1159,3 +1159,8 @@ Outputs:
     Value: !Ref ReportLambda
     Export:
       Name: !Sub cloudmart-${Environment}-ReportLambdaName
+  ApiGatewayName:
+    Description: API Gateway name
+    Value: !Ref CloudMartApi
+    Export:
+      Name: !Sub cloudmart-${Environment}-ApiGatewayName
