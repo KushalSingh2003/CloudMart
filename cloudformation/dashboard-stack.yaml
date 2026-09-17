@@ -362,7 +362,64 @@ Resources:
                   [ "CloudMart/Business", "ProductsDeleted" ]
                 ]
               }
-            }
+            },
+                          ,
+              {
+                "type": "metric",
+                "x": 0,
+                "y": 26,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "title": "API Gateway Errors",
+                  "region": "${AWS::Region}",
+                  "view": "timeSeries",
+                  "stat": "Sum",
+                  "period": 300,
+                  "metrics": [
+                    [
+                      "AWS/ApiGateway",
+                      "4XXError",
+                      "ApiName",
+                      "${ApiGatewayName}",
+                      "Stage",
+                      "${ApiGatewayStage}"
+                    ],
+                    [
+                      "AWS/ApiGateway",
+                      "5XXError",
+                      "ApiName",
+                      "${ApiGatewayName}",
+                      "Stage",
+                      "${ApiGatewayStage}"
+                    ]
+                  ]
+                }
+              },
+              {
+                "type": "metric",
+                "x": 12,
+                "y": 26,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "title": "API Gateway P99 Latency",
+                  "region": "${AWS::Region}",
+                  "view": "timeSeries",
+                  "stat": "p99",
+                  "period": 300,
+                  "metrics": [
+                    [
+                      "AWS/ApiGateway",
+                      "Latency",
+                      "ApiName",
+                      "${ApiGatewayName}",
+                      "Stage",
+                      "${ApiGatewayStage}"
+                    ]
+                  ]
+                }
+              }
 
             ]
           }
@@ -380,6 +437,11 @@ Resources:
 
           ReportLambda:
             Fn::ImportValue: !Sub cloudmart-${Environment}-ReportLambdaName
+          ApiGatewayName:
+            Fn::ImportValue: !Sub cloudmart-${Environment}-ApiGatewayName
+
+          ApiGatewayStage:
+            Fn::Sub: ${Environment}
 
           RDSInstance:
             Fn::ImportValue: !Sub cloudmart-${Environment}-rds-instance-id
