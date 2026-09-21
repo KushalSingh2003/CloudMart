@@ -231,6 +231,16 @@ jobs:
 
         echo "INSTANCE_ID=$INSTANCE_ID"
         echo "instance_id=$INSTANCE_ID" >> "$GITHUB_OUTPUT"
+    - name: Get Reports Bucket Name
+      id: get-reports-bucket
+      run: |
+        REPORTS_BUCKET=$(aws cloudformation describe-stacks \
+          --stack-name application-stack-CloudMart \
+          --query 'Stacks[0].Outputs[?OutputKey=='ReportsBucketName'].OutputValue' \
+          --output text)
+
+        echo "REPORTS_BUCKET=$REPORTS_BUCKET"
+        echo "reports_bucket=$REPORTS_BUCKET" >> "$GITHUB_OUTPUT"
 
     - name: Deploy latest dashboard to EC2
       run: |
@@ -244,8 +254,7 @@ jobs:
             "sudo rm -rf /opt/cloudmart-dashboard/static /opt/cloudmart-dashboard/templates /opt/cloudmart-dashboard/app.py /opt/cloudmart-dashboard/requirements.txt",
             "sudo unzip -o /tmp/dashboard.zip -d /opt/cloudmart-dashboard",
             "sudo /opt/cloudmart-dashboard/venv/bin/pip install -r /opt/cloudmart-dashboard/requirements.txt",
-            "REPORTS_BUCKET=$(aws cloudformation describe-stacks --stack-name application-stack-CloudMart --query \"Stacks[0].Outputs[?OutputKey=='ReportsBucketName'].OutputValue\" --output text)",
-            "echo REPORTS_BUCKET_NAME=$REPORTS_BUCKET | sudo tee /etc/cloudmart-dashboard.env > /dev/null",
+            "echo REPORTS_BUCKET_NAME=${{ steps.get-reports-bucket.outputs.reports_bucket }} | sudo tee /etc/cloudmart-dashboard.env > /dev/null",
             "sudo sed -i '/^EnvironmentFile=/d' /etc/systemd/system/cloudmart-dashboard.service",
             "sudo sed -i '/^\\[Service\\]$/a EnvironmentFile=/etc/cloudmart-dashboard.env' /etc/systemd/system/cloudmart-dashboard.service",
             "sudo systemctl daemon-reload",
