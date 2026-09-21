@@ -594,6 +594,51 @@
                 {% endif %}
 
             </div>
+            <!-- Reports -->
+<div class="card report-card">
+
+    <div class="card-header">
+
+        <div>
+
+            <h3>
+                Reports
+            </h3>
+
+            <p>
+                Download the daily sales report
+            </p>
+
+        </div>
+
+    </div>
+
+    <form
+        action="{{ url_for('download_report') }}"
+        method="get"
+        class="report-form"
+    >
+
+        <label for="reportDate">
+            Report Date
+        </label>
+
+        <input
+            type="date"
+            id="reportDate"
+            name="date"
+            max="{{ today }}"
+            value="{{ today }}"
+            required
+        >
+
+        <button type="submit">
+            Download Report
+        </button>
+
+    </form>
+
+</div>
 
         </section>
 

@@ -178,11 +178,14 @@
 #         host="0.0.0.0",
 #         port=80
 #     )
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect
+import os
 import pymysql
 import boto3
-
+from datetime import datetime
+from zoneinfo import ZoneInfo
 app = Flask(__name__)
+REPORTS_BUCKET = os.environ["REPORTS_BUCKET_NAME"]
 
 
 def get_db_connection():
@@ -306,6 +309,9 @@ def dashboard():
                 ORDER BY stock ASC
             """)
             low_stock = cursor.fetchall()
+        today = datetime.now(
+            ZoneInfo("Asia/Kolkata")
+        ).date().isoformat()
 
         return render_template(
             "dashboard.html",
@@ -316,7 +322,8 @@ def dashboard():
             recent_orders=recent_orders,
             order_status=order_status,
             best_selling=best_selling,
-            low_stock=low_stock
+            low_stock=low_stock,
+            today=today
         )
 
     finally:
@@ -648,6 +655,72 @@ def order_details(order_id):
 
     finally:
         conn.close()
+@app.route("/download-report")
+def download_report():
+
+    report_date = request.args.get("date")
+
+    if not report_date:
+        return "Please select a report date.", 400
+
+    try:
+        selected_date = datetime.strptime(
+            report_date,
+            "%Y-%m-%d"
+        ).date()
+
+    except ValueError:
+        return "Invalid date format.", 400
+
+    # Current date in India
+    today = datetime.now(
+        ZoneInfo("Asia/Kolkata")
+    ).date()
+
+    # Prevent future dates
+    if selected_date > today:
+        return "Future dates are not allowed.", 400
+
+    # S3 file name
+    file_key = f"reports/daily-report-{report_date}.csv"
+
+    s3 = boto3.client(
+        "s3",
+        region_name="ap-south-1"
+    )
+
+    try:
+
+        # Check whether the report exists
+        s3.head_object(
+            Bucket=REPORTS_BUCKET,
+            Key=file_key
+        )
+
+        # Generate temporary download URL
+        download_url = s3.generate_presigned_url(
+            "get_object",
+            Params={
+                "Bucket": REPORTS_BUCKET,
+                "Key": file_key
+            },
+            ExpiresIn=300
+        )
+
+        return redirect(download_url)
+
+    except s3.exceptions.ClientError as e:
+
+        error_code = e.response["Error"]["Code"]
+
+        if error_code in ["404", "NoSuchKey", "NotFound"]:
+
+            return (
+                f"Report for {report_date} is not available yet.",
+                404
+            )
+
+        return "Unable to download the report.", 500
 
 if __name__ == "__main__":
     app.run(

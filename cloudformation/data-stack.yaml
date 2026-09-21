@@ -258,8 +258,3 @@ Outputs:
     Value: !Ref CloudMartDBSubnetGroup
     Export:
       Name: !Sub cloudmart-${Environment}-db-subnet-group
-  ApiGatewayName:
-    Description: API Gateway name
-    Value: !Ref ApiGateway
-    Export:
-      Name: !Sub cloudmart-${Environment}-ApiGatewayName

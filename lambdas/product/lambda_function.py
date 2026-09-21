@@ -1601,6 +1601,7 @@ def lambda_handler(event, context):
                         }
                     ]
                 )
+                publish_metric("LowStockAlert")
 
 
             return response(

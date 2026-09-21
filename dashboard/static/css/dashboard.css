@@ -866,3 +866,62 @@ footer {
 .back-button:hover {
     opacity: 0.9;
 }
+/* ============================= */
+/* Reports Section */
+/* ============================= */
+
+.report-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.report-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.report-form label {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.report-form input[type="date"] {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #ffffff;
+    font-family: inherit;
+    font-size: 14px;
+    color: #1f2937;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.report-form input[type="date"]:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.report-form button {
+    width: 100%;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.report-form button:hover {
+    opacity: 0.9;
+}
+
+.report-form button:active {
+    transform: translateY(1px);
+}

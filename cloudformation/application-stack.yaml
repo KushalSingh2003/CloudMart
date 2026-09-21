@@ -1181,10 +1181,11 @@ Outputs:
   ApplicationBucketName:
     Description: Application S3 Bucket
     Value: !Ref ApplicationS3Bucket
-
   ReportsBucketName:
     Description: S3 bucket containing daily reports
     Value: !Ref ReportsBucket
+    Export:
+      Name: !Sub cloudmart-${Environment}-ReportsBucketName
 
   ProductLambdaName:
     Description: Product Lambda function name
