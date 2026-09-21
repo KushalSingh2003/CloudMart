@@ -154,19 +154,19 @@ jobs:
   #     tags_file: cloudformation/config/tags.json
   #     environment: dev
   #   secrets: inherit
-  # monitoring:
-  #   name: Deploy Monitoring  Stack check
-  #   needs: application
+  monitoring:
+    name: Deploy Monitoring  Stack check
+    needs: package-lambdas
 
-  #   uses: ./.github/workflows/deploy-stack.yaml
-  #   with:
-  #     stack_name: dashboard-stack-CloudMart
-  #     template_file: cloudformation/dashboard-stack.yaml
-  #     parameters_file: cloudformation/config/monitoring-parameters.json
-  #     tags_file: cloudformation/config/tags.json
-  #     environment: dev
+    uses: ./.github/workflows/deploy-stack.yaml
+    with:
+      stack_name: dashboard-stack-CloudMart
+      template_file: cloudformation/dashboard-stack.yaml
+      parameters_file: cloudformation/config/monitoring-parameters.json
+      tags_file: cloudformation/config/tags.json
+      environment: dev
 
-  #   secrets: inherit
+    secrets: inherit
   # dashboard-update:
   #   name: Update Dashboard EC2
   #   needs: monitoring
@@ -211,7 +211,7 @@ jobs:
   #         --region "${{ vars.AWS_REGION }}"
   dashboard-update:
     name: Update Dashboard EC2
-    needs: package-lambdas
+    needs: monitoring
     runs-on: ubuntu-latest
 
     steps:
