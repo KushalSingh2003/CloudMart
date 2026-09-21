@@ -236,7 +236,7 @@ jobs:
       run: |
         REPORTS_BUCKET=$(aws cloudformation describe-stacks \
           --stack-name application-stack-CloudMart \
-          --query 'Stacks[0].Outputs[?OutputKey=='ReportsBucketName'].OutputValue' \
+          --query 'Stacks[0].Outputs[?OutputKey==`ReportsBucketName`].OutputValue' \
           --output text)
 
         echo "REPORTS_BUCKET=$REPORTS_BUCKET"
