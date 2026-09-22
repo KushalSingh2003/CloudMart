@@ -155,7 +155,7 @@ jobs:
   #     environment: dev
   #   secrets: inherit
   monitoring:
-    name: Deploy Monitoring  Stack check
+    name: Deploy Monitoring  Stack check yes
     needs: package-lambdas
 
     uses: ./.github/workflows/deploy-stack.yaml
