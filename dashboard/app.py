@@ -178,7 +178,9 @@
 #         host="0.0.0.0",
 #         port=80
 #     )
-from flask import Flask, render_template, request, redirect
+
+from flask import Flask, render_template, request, redirect, session, url_for
+from functools import wraps
 import os
 import pymysql
 import boto3
@@ -186,6 +188,15 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 app = Flask(__name__)
 REPORTS_BUCKET = os.environ["REPORTS_BUCKET_NAME"]
+app.secret_key = os.environ["FLASK_SECRET_KEY"]
+def admin_required(view):
+    @wraps(view)
+    def wrapped_view(*args, **kwargs):
+        if session.get("role") != "ADMIN":
+            return redirect(url_for("login"))
+        return view(*args, **kwargs)
+
+    return wrapped_view
 
 
 def get_db_connection():
@@ -223,11 +234,72 @@ def get_db_connection():
         cursorclass=pymysql.cursors.DictCursor
     )
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+
+    if request.method == "POST":
+
+        user_id = request.form.get("user_id", "").strip()
+        token = request.form.get("token", "").strip()
+
+        if not user_id or not token:
+            return render_template(
+                "login.html",
+                error="User ID and token are required."
+            )
+
+        conn = get_db_connection()
+
+        try:
+            with conn.cursor() as cursor:
+
+                cursor.execute(
+                    """
+                    SELECT user_id, name, email, Role
+                    FROM Customers
+                    WHERE user_id = %s
+                    AND token = %s
+                    """,
+                    (user_id, token)
+                )
+
+                user = cursor.fetchone()
+
+            if not user:
+                return render_template(
+                    "login.html",
+                    error="Invalid User ID or token."
+                )
+
+            if user["Role"] != "ADMIN":
+                return render_template(
+                    "login.html",
+                    error="Access denied. Admin access required."
+                )
+
+            session["user_id"] = user["user_id"]
+            session["name"] = user["name"]
+            session["role"] = user["Role"]
+
+            return redirect(url_for("dashboard"))
+
+        finally:
+            conn.close()
+
+    return render_template("login.html")
+@app.route("/logout")
+def logout():
+
+    session.clear()
+
+    return redirect(url_for("login"))
 
 @app.route("/")
+@admin_required
 def dashboard():
-
+    
     conn = get_db_connection()
+    
 
     try:
         with conn.cursor() as cursor:
@@ -331,6 +403,7 @@ def dashboard():
 
 
 @app.route("/products")
+@admin_required
 def products():
 
     search = request.args.get("search", "").strip()
@@ -390,6 +463,7 @@ def products():
     finally:
         conn.close()
 @app.route("/products/<int:product_id>")
+@admin_required
 def product_details(product_id):
 
     connection = get_db_connection()
@@ -426,6 +500,7 @@ def product_details(product_id):
     finally:
         connection.close()
 @app.route("/customers")
+@admin_required
 def customers():
 
     search = request.args.get("search", "").strip()
@@ -483,6 +558,7 @@ def customers():
 
 
 @app.route("/customers/<int:user_id>")
+@admin_required
 def customer_details(user_id):
 
     conn = get_db_connection()
@@ -533,6 +609,8 @@ def customer_details(user_id):
     finally:
         conn.close()
 @app.route("/orders")
+@admin_required
+
 def orders():
 
     search = request.args.get("search", "").strip()
@@ -598,6 +676,7 @@ def orders():
 
 
 @app.route("/orders/<int:order_id>")
+@admin_required
 def order_details(order_id):
 
     conn = get_db_connection()
@@ -656,6 +735,7 @@ def order_details(order_id):
     finally:
         conn.close()
 @app.route("/download-report")
+@admin_required
 def download_report():
 
     report_date = request.args.get("date")

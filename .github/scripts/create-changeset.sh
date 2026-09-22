@@ -276,9 +276,11 @@ if [ -n "${PARAMETERS_FILE}" ]; then
         jq \
           --arg bucket "$LAMBDA_CODE_BUCKET" \
           --arg s3key "dashboard/dashboard-${GITHUB_RUN_ID}.zip" \
+          --arg flask_secret_key "$FLASK_SECRET_KEY" \
           '. + [
             {"ParameterKey":"LambdaCodeBucket","ParameterValue":$bucket},
-            {"ParameterKey":"DashboardS3Key","ParameterValue":$s3key}
+            {"ParameterKey":"DashboardS3Key","ParameterValue":$s3key},
+            {"ParameterKey":"FlaskSecretKey","ParameterValue":$flask_secret_key}
           ]' \
           "$PARAMETERS_WITH_AUTH" > "${PARAMETERS_WITH_AUTH}.tmp"
 

@@ -32,6 +32,10 @@ Parameters:
 
   GitHubRunId:
     Type: String
+  FlaskSecretKey:
+    Type: String
+    NoEcho: true
+    Description: Flask session secret key
 
 Resources:
 
@@ -719,6 +723,7 @@ Resources:
 
       #     # Install dashboard dependencies
       #     pip install -r requirements.txt
+
       #     cat > /etc/cloudmart-dashboard.env <<EOF
       #     REPORTS_BUCKET_NAME=${ReportsBucketName}
       #     EOF
@@ -787,10 +792,15 @@ Resources:
             # Install dashboard dependencies
             pip install -r requirements.txt
 
+
+
+
             # Store CloudMart configuration
             cat > /etc/cloudmart-dashboard.env <<EOF
+            FLASK_SECRET_KEY=${FlaskSecretKey}
             REPORTS_BUCKET_NAME=${ReportsBucketName}
             EOF
+            chmod 600 /etc/cloudmart-dashboard.env
 
             # Create systemd service
             cat > /etc/systemd/system/cloudmart-dashboard.service <<'EOF'
