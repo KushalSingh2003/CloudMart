@@ -9,6 +9,7 @@
 
     <link rel="stylesheet"
           href="{{ url_for('static', filename='css/dashboard.css') }}">
+
 </head>
 
 <body>
@@ -87,6 +88,9 @@
                 <span>
                     Production
                 </span>
+                    <a href="{{ url_for('logout') }}" class="logout-btn">
+        Logout
+    </a>
 
             </div>
 
@@ -614,8 +618,7 @@
     </div>
 
     <form
-        action="{{ url_for('download_report') }}"
-        method="get"
+        id="reportForm"
         class="report-form"
     >
 
@@ -659,6 +662,34 @@
     </main>
 
 </div>
+<script>
+document.getElementById("reportForm").addEventListener("submit", async function(event) {
+    event.preventDefault();
+
+    const date = document.getElementById("reportDate").value;
+
+    try {
+        const response = await fetch(
+            `/download-report?date=${encodeURIComponent(date)}`
+        );
+
+        if (response.status === 404) {
+            alert("Report does not exist for the selected date.");
+            return;
+        }
+
+        if (response.redirected) {
+            window.location.href = response.url;
+            return;
+        }
+
+        alert("Unable to download the report.");
+
+    } catch (error) {
+        alert("Unable to download the report.");
+    }
+});
+</script>
 
 </body>
 
