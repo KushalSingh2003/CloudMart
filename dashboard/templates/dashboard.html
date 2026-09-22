@@ -9,6 +9,7 @@
 
     <link rel="stylesheet"
           href="{{ url_for('static', filename='css/dashboard.css') }}">
+
 </head>
 
 <body>
@@ -87,6 +88,9 @@
                 <span>
                     Production
                 </span>
+                    <a href="{{ url_for('logout') }}" class="logout-btn">
+        Logout
+    </a>
 
             </div>
 

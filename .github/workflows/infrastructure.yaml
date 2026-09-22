@@ -209,57 +209,57 @@ jobs:
   #           "sudo systemctl is-active cloudmart-dashboard"
   #         ]' \
   #         --region "${{ vars.AWS_REGION }}"
-  # dashboard-update:
-  #   name: Update Dashboard EC2
-  #   needs: monitoring
-  #   runs-on: ubuntu-latest
+  dashboard-update:
+    name: Update Dashboard EC2
+    needs: monitoring
+    runs-on: ubuntu-latest
 
-  #   steps:
-  #   - name: Configure AWS credentials via OIDC
-  #     uses: aws-actions/configure-aws-credentials@v4
-  #     with:
-  #       role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-  #       aws-region: ${{ vars.AWS_REGION }}
+    steps:
+    - name: Configure AWS credentials via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+        aws-region: ${{ vars.AWS_REGION }}
 
-  #   - name: Get Dashboard EC2 Instance ID
-  #     id: get-instance
-  #     run: |
-  #       INSTANCE_ID=$(aws cloudformation describe-stacks \
-  #         --stack-name dashboard-stack-CloudMart \
-  #         --query "Stacks[0].Outputs[?OutputKey=='DashboardInstanceId'].OutputValue" \
-  #         --output text)
+    - name: Get Dashboard EC2 Instance ID
+      id: get-instance
+      run: |
+        INSTANCE_ID=$(aws cloudformation describe-stacks \
+          --stack-name dashboard-stack-CloudMart \
+          --query "Stacks[0].Outputs[?OutputKey=='DashboardInstanceId'].OutputValue" \
+          --output text)
 
-  #       echo "INSTANCE_ID=$INSTANCE_ID"
-  #       echo "instance_id=$INSTANCE_ID" >> "$GITHUB_OUTPUT"
-  #   - name: Get Reports Bucket Name
-  #     id: get-reports-bucket
-  #     run: |
-  #       REPORTS_BUCKET=$(aws cloudformation describe-stacks \
-  #         --stack-name application-stack-CloudMart \
-  #         --query 'Stacks[0].Outputs[?OutputKey==`ReportsBucketName`].OutputValue' \
-  #         --output text)
+        echo "INSTANCE_ID=$INSTANCE_ID"
+        echo "instance_id=$INSTANCE_ID" >> "$GITHUB_OUTPUT"
+    - name: Get Reports Bucket Name
+      id: get-reports-bucket
+      run: |
+        REPORTS_BUCKET=$(aws cloudformation describe-stacks \
+          --stack-name application-stack-CloudMart \
+          --query 'Stacks[0].Outputs[?OutputKey==`ReportsBucketName`].OutputValue' \
+          --output text)
 
-  #       echo "REPORTS_BUCKET=$REPORTS_BUCKET"
-  #       echo "reports_bucket=$REPORTS_BUCKET" >> "$GITHUB_OUTPUT"
+        echo "REPORTS_BUCKET=$REPORTS_BUCKET"
+        echo "reports_bucket=$REPORTS_BUCKET" >> "$GITHUB_OUTPUT"
 
-  #   - name: Deploy latest dashboard to EC2
-  #     run: |
-  #       aws ssm send-command \
-  #         --instance-ids "${{ steps.get-instance.outputs.instance_id }}" \
-  #         --document-name "AWS-RunShellScript" \
-  #         --parameters 'commands=[
-  #           "set -e",
-  #           "cd /opt/cloudmart-dashboard",
-  #           "aws s3 cp s3://${{ vars.LAMBDA_CODE_BUCKET }}/dashboard/dashboard-${{ github.run_id }}.zip /tmp/dashboard.zip",
-  #           "sudo rm -rf /opt/cloudmart-dashboard/static /opt/cloudmart-dashboard/templates /opt/cloudmart-dashboard/app.py /opt/cloudmart-dashboard/requirements.txt",
-  #           "sudo unzip -o /tmp/dashboard.zip -d /opt/cloudmart-dashboard",
-  #           "sudo /opt/cloudmart-dashboard/venv/bin/pip install -r /opt/cloudmart-dashboard/requirements.txt",
-  #           "sudo sed -i '/^REPORTS_BUCKET_NAME=/d' /etc/cloudmart-dashboard.env",
-  #           "echo REPORTS_BUCKET_NAME=${{ steps.get-reports-bucket.outputs.reports_bucket }} | sudo tee -a /etc/cloudmart-dashboard.env > /dev/null",
-  #           "sudo mkdir -p /etc/systemd/system/cloudmart-dashboard.service.d",
-  #           "printf \"%s\\n\" \"[Service]\" \"EnvironmentFile=/etc/cloudmart-dashboard.env\" | sudo tee /etc/systemd/system/cloudmart-dashboard.service.d/env.conf > /dev/null",
-  #           "sudo systemctl daemon-reload",
-  #           "sudo systemctl restart cloudmart-dashboard",
-  #           "sudo systemctl is-active cloudmart-dashboard"
-  #         ]' \
-  #         --region "${{ vars.AWS_REGION }}"
+    - name: Deploy latest dashboard to EC2
+      run: |
+        aws ssm send-command \
+          --instance-ids "${{ steps.get-instance.outputs.instance_id }}" \
+          --document-name "AWS-RunShellScript" \
+          --parameters 'commands=[
+            "set -e",
+            "cd /opt/cloudmart-dashboard",
+            "aws s3 cp s3://${{ vars.LAMBDA_CODE_BUCKET }}/dashboard/dashboard-${{ github.run_id }}.zip /tmp/dashboard.zip",
+            "sudo rm -rf /opt/cloudmart-dashboard/static /opt/cloudmart-dashboard/templates /opt/cloudmart-dashboard/app.py /opt/cloudmart-dashboard/requirements.txt",
+            "sudo unzip -o /tmp/dashboard.zip -d /opt/cloudmart-dashboard",
+            "sudo /opt/cloudmart-dashboard/venv/bin/pip install -r /opt/cloudmart-dashboard/requirements.txt",
+            "sudo sed -i '/^REPORTS_BUCKET_NAME=/d' /etc/cloudmart-dashboard.env",
+            "echo REPORTS_BUCKET_NAME=${{ steps.get-reports-bucket.outputs.reports_bucket }} | sudo tee -a /etc/cloudmart-dashboard.env > /dev/null",
+            "sudo mkdir -p /etc/systemd/system/cloudmart-dashboard.service.d",
+            "printf \"%s\\n\" \"[Service]\" \"EnvironmentFile=/etc/cloudmart-dashboard.env\" | sudo tee /etc/systemd/system/cloudmart-dashboard.service.d/env.conf > /dev/null",
+            "sudo systemctl daemon-reload",
+            "sudo systemctl restart cloudmart-dashboard",
+            "sudo systemctl is-active cloudmart-dashboard"
+          ]' \
+          --region "${{ vars.AWS_REGION }}"
