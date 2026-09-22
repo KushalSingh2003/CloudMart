@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Orders - CloudMart</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/dashboard.css') }}">
+</head>
+
+<body>
+
+<div class="app-container">
+
+    <aside class="sidebar">
+
+        <div class="brand">
+            <div class="brand-icon">C</div>
+
+            <div>
+                <h2>CloudMart</h2>
+                <span>Admin Dashboard</span>
+            </div>
+        </div>
+
+        <nav class="navigation">
+
+            <a href="/" class="nav-item">
+                <span class="nav-icon">⌂</span>
+                Dashboard
+            </a>
+
+            <a href="/products" class="nav-item">
+                <span class="nav-icon">▦</span>
+                Products
+            </a>
+
+            <a href="/customers" class="nav-item">
+                <span class="nav-icon">♙</span>
+                Customers
+            </a>
+
+            <a href="/orders" class="nav-item active">
+                <span class="nav-icon">◫</span>
+                Orders
+            </a>
+
+        </nav>
+
+    </aside>
+
+
+    <main class="main-content">
+
+        <header class="topbar">
+
+            <div>
+                <h1>Orders</h1>
+
+                <p>
+                    Manage and monitor CloudMart orders.
+                </p>
+            </div>
+
+        </header>
+
+
+        <section class="card">
+
+            <div class="card-header">
+
+                <div>
+                    <h3>Order History</h3>
+
+                    <p>
+                        {{ orders|length }} orders found
+                    </p>
+                </div>
+
+
+                <form method="GET"
+                      action="/orders"
+                      class="search-form">
+
+                    <input
+                        type="text"
+                        name="search"
+                        value="{{ search }}"
+                        placeholder="Search orders..."
+                    >
+
+                    <button type="submit">
+                        Search
+                    </button>
+
+                </form>
+
+            </div>
+
+
+            <div class="table-wrapper">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Customer</th>
+                            <th>Total</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody>
+
+                    {% for order in orders %}
+
+                        <tr>
+
+                            <td>
+
+                                <a
+                                    href="{{ url_for(
+                                        'order_details',
+                                        order_id=order.order_id
+                                    ) }}"
+                                    class="product-link"
+                                >
+
+                                    <strong>
+                                        #{{ order.order_id }}
+                                    </strong>
+
+                                </a>
+
+                            </td>
+
+
+                            <td>
+
+                                {% if order.customer_name %}
+
+                                    {{ order.customer_name }}
+
+                                {% else %}
+
+                                    Customer #{{ order.user_id }}
+
+                                {% endif %}
+
+                            </td>
+
+
+                            <td>
+
+                                ₹{{ "%.2f"|format(
+                                    order.total_amount|float
+                                ) }}
+
+                            </td>
+
+
+                            <td>
+
+                                <span class="status status-neutral">
+                                    {{ order.status }}
+                                </span>
+
+                            </td>
+
+
+                            <td>
+                                {{ order.created_at }}
+                            </td>
+
+                        </tr>
+
+
+                    {% else %}
+
+                        <tr>
+
+                            <td colspan="5">
+
+                                <div class="empty-state compact">
+
+                                    <h4>
+                                        No orders found
+                                    </h4>
+
+                                    <p>
+                                        Try a different search.
+                                    </p>
+
+                                </div>
+
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+
+        <footer>
+
+            <span>
+                CloudMart Dashboard
+            </span>
+
+            <span>
+                Connected to RDS MySQL
+            </span>
+
+        </footer>
+
+    </main>
+
+</div>
+
+</body>
+
+</html>

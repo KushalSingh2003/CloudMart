@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>CloudMart Dashboard</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/dashboard.css') }}">
+</head>
+
+<body>
+
+<div class="app-container">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+
+        <div class="brand">
+
+            <div class="brand-icon">
+                C
+            </div>
+
+            <div>
+                <h2>CloudMart</h2>
+                <span>Dashboard version 2</span>
+            </div>
+
+        </div>
+
+
+        <!-- Navigation -->
+        <nav class="navigation">
+
+            <a href="/" class="nav-item">
+                <span class="nav-icon">⌂</span>
+                Dashboard
+            </a>
+
+            <a href="/orders" class="nav-item">
+                <span class="nav-icon">◫</span>
+                Orders
+            </a>
+
+            <a href="/products" class="nav-item">
+                <span class="nav-icon">▦</span>
+                Products
+            </a>
+
+            <a href="/customers" class="nav-item">
+                <span class="nav-icon">♙</span>
+                Customers
+            </a>
+
+        </nav>
+
+
+        <div class="sidebar-footer">
+            <span>CloudMart</span>
+            <small>Serverless E-Commerce</small>
+        </div>
+
+    </aside>
+
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+        <!-- Header -->
+        <header class="topbar">
+
+            <div>
+                <h1>Dashboard</h1>
+
+                <p>
+                    Here's what's happening with your store today.
+                </p>
+            </div>
+
+            <div class="environment">
+
+                <span class="status-dot"></span>
+
+                <span>
+                    Production
+                </span>
+
+            </div>
+
+        </header>
+
+
+        <!-- Statistics -->
+        <section class="stats-grid">
+
+
+            <!-- Total Products -->
+            <div class="stat-card">
+
+                <div class="stat-icon">
+                    ◈
+                </div>
+
+                <div class="stat-content">
+
+                    <span>
+                        Total Products
+                    </span>
+
+                    <h2>
+                        {{ total_products }}
+                    </h2>
+
+                </div>
+
+            </div>
+
+
+            <!-- Total Customers -->
+            <div class="stat-card">
+
+                <div class="stat-icon">
+                    ♙
+                </div>
+
+                <div class="stat-content">
+
+                    <span>
+                        Total Customers
+                    </span>
+
+                    <h2>
+                        {{ total_customers }}
+                    </h2>
+
+                </div>
+
+            </div>
+
+
+            <!-- Total Orders -->
+            <div class="stat-card">
+
+                <div class="stat-icon">
+                    ◫
+                </div>
+
+                <div class="stat-content">
+
+                    <span>
+                        Total Orders
+                    </span>
+
+                    <h2>
+                        {{ total_orders }}
+                    </h2>
+
+                </div>
+
+            </div>
+
+
+            <!-- Total Sales -->
+            <div class="stat-card">
+
+                <div class="stat-icon">
+                    ₹
+                </div>
+
+                <div class="stat-content">
+
+                    <span>
+                        Total Sales
+                    </span>
+
+                    <h2>
+                        ₹{{ "%.2f"|format(total_sales|float) }}
+                    </h2>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- Main Grid -->
+        <section class="dashboard-grid">
+
+
+            <!-- Recent Orders -->
+            <div class="card large-card">
+
+                <div class="card-header">
+
+                    <div>
+
+                        <h3>
+                            Recent Orders
+                        </h3>
+
+                        <p>
+                            Latest activity from your customers
+                        </p>
+
+                    </div>
+
+                    <span class="card-count">
+                        {{ recent_orders|length }}
+                    </span>
+
+                </div>
+
+
+                {% if recent_orders %}
+
+                <div class="table-wrapper">
+
+                    <table>
+
+                        <thead>
+
+                            <tr>
+
+                                <th>
+                                    Order
+                                </th>
+
+                                <th>
+                                    Customer
+                                </th>
+
+                                <th>
+                                    Amount
+                                </th>
+
+                                <th>
+                                    Status
+                                </th>
+
+                                <th>
+                                    Date
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody>
+
+                        {% for order in recent_orders %}
+
+                            <tr>
+
+                                <!-- Order -->
+                                <td>
+
+                                    <strong>
+                                        #{{ order.order_id }}
+                                    </strong>
+
+                                </td>
+
+
+                                <!-- Customer -->
+                                <td>
+
+                                    {{ order.customer_name or "Unknown" }}
+
+                                </td>
+
+
+                                <!-- Amount -->
+                                <td>
+
+                                    ₹{{ "%.2f"|format(order.total_amount|float) }}
+
+                                </td>
+
+
+                                <!-- Status -->
+                                <td>
+
+                                    <span class="status
+
+                                        {% if order.status|lower == 'completed' %}
+                                            status-success
+
+                                        {% elif order.status|lower == 'cancelled' %}
+                                            status-danger
+
+                                        {% elif order.status|lower == 'pending' %}
+                                            status-warning
+
+                                        {% else %}
+                                            status-neutral
+
+                                        {% endif %}
+
+                                    ">
+
+                                        {{ order.status }}
+
+                                    </span>
+
+                                </td>
+
+
+                                <!-- Date -->
+                                <td>
+
+                                    {{ order.created_at.strftime('%d %b %Y')
+                                       if order.created_at else '-' }}
+
+                                </td>
+
+                            </tr>
+
+                        {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+
+                {% else %}
+
+                <div class="empty-state">
+
+                    <div class="empty-icon">
+                        ◫
+                    </div>
+
+                    <h4>
+                        No orders yet
+                    </h4>
+
+                    <p>
+                        Orders will appear here once customers start purchasing.
+                    </p>
+
+                </div>
+
+                {% endif %}
+
+            </div>
+
+
+            <!-- Order Status -->
+            <div class="card">
+
+                <div class="card-header">
+
+                    <div>
+
+                        <h3>
+                            Order Status
+                        </h3>
+
+                        <p>
+                            Current order distribution
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                {% if order_status %}
+
+                <div class="status-list">
+
+                    {% for status in order_status %}
+
+                    <div class="status-row">
+
+                        <div class="status-name">
+
+                            <span class="status-dot-small"></span>
+
+                            <span>
+                                {{ status.status }}
+                            </span>
+
+                        </div>
+
+                        <strong>
+                            {{ status.total }}
+                        </strong>
+
+                    </div>
+
+                    {% endfor %}
+
+                </div>
+
+
+                {% else %}
+
+                <div class="empty-state compact">
+
+                    <p>
+                        No order status data available.
+                    </p>
+
+                </div>
+
+                {% endif %}
+
+            </div>
+
+
+            <!-- Best Selling Products -->
+            <div class="card">
+
+                <div class="card-header">
+
+                    <div>
+
+                        <h3>
+                            Best-Selling Products
+                        </h3>
+
+                        <p>
+                            Top products by quantity sold
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                {% if best_selling %}
+
+                <div class="product-list">
+
+                    {% for product in best_selling %}
+
+                    <div class="product-row">
+
+                        <div class="product-rank">
+                            {{ loop.index }}
+                        </div>
+
+
+                        <div class="product-info">
+
+                            <strong>
+                                {{ product.product_name }}
+                            </strong>
+
+                            <span>
+                                Product ID: {{ product.product_id }}
+                            </span>
+
+                        </div>
+
+
+                        <div class="product-quantity">
+
+                            {{ product.total_quantity }}
+
+                            <small>
+                                sold
+                            </small>
+
+                        </div>
+
+                    </div>
+
+                    {% endfor %}
+
+                </div>
+
+
+                {% else %}
+
+                <div class="empty-state compact">
+
+                    <p>
+                        No sales data available.
+                    </p>
+
+                </div>
+
+                {% endif %}
+
+            </div>
+
+
+            <!-- Low Stock -->
+            <div class="card">
+
+                <div class="card-header">
+
+                    <div>
+
+                        <h3>
+                            Low Stock
+                        </h3>
+
+                        <p>
+                            Products that need attention
+                        </p>
+
+                    </div>
+
+
+                    {% if low_stock %}
+
+                    <span class="alert-count">
+                        {{ low_stock|length }}
+                    </span>
+
+                    {% endif %}
+
+                </div>
+
+
+                {% if low_stock %}
+
+                <div class="stock-list">
+
+                    {% for product in low_stock %}
+
+                    <div class="stock-row">
+
+                        <div>
+
+                            <strong>
+                                {{ product.name }}
+                            </strong>
+
+                            <span>
+                                Product #{{ product.product_id }}
+                            </span>
+
+                        </div>
+
+
+                        <div class="stock-value
+
+                            {% if product.stock == 0 %}
+                                stock-critical
+                            {% else %}
+                                stock-warning
+                            {% endif %}
+
+                        ">
+
+                            {{ product.stock }}
+
+                            <small>
+                                left
+                            </small>
+
+                        </div>
+
+                    </div>
+
+                    {% endfor %}
+
+                </div>
+
+
+                {% else %}
+
+                <div class="healthy-stock">
+
+                    <div class="healthy-icon">
+                        ✓
+                    </div>
+
+                    <div>
+
+                        <strong>
+                            Stock looks good
+                        </strong>
+
+                        <p>
+                            No products are currently low on stock.
+                        </p>
+
+                    </div>
+
+                </div>
+
+                {% endif %}
+
+            </div>
+            <!-- Reports -->
+<div class="card report-card">
+
+    <div class="card-header">
+
+        <div>
+
+            <h3>
+                Reports
+            </h3>
+
+            <p>
+                Download the daily sales report
+            </p>
+
+        </div>
+
+    </div>
+
+    <form
+        action="{{ url_for('download_report') }}"
+        method="get"
+        class="report-form"
+    >
+
+        <label for="reportDate">
+            Report Date
+        </label>
+
+        <input
+            type="date"
+            id="reportDate"
+            name="date"
+            max="{{ today }}"
+            value="{{ today }}"
+            required
+        >
+
+        <button type="submit">
+            Download Report
+        </button>
+
+    </form>
+
+</div>
+
+        </section>
+
+
+        <!-- Footer -->
+        <footer>
+
+            <span>
+                CloudMart Dashboard
+            </span>
+
+            <span>
+                Connected to RDS MySQL
+            </span>
+
+        </footer>
+
+    </main>
+
+</div>
+
+</body>
+
+</html>

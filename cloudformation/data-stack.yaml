@@ -3,7 +3,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: CloudMart Data Stack. Creates the RDS MySQL database using the private subnets and RDS security group created by the Network Stack.
 
 # ============================================================================
-# PARAMETERS
+# PARAMETERS DECLARATION
 # ============================================================================
 Parameters:
 
@@ -53,6 +53,10 @@ Parameters:
     Default: 1
     MinValue: 0
     Description: Number of days to retain automated backups.
+
+  GitHubRunId:
+    Type: String
+    Description: GitHub Actions run ID
 # ============================================================================
 # RESOURCES
 # ============================================================================
@@ -209,6 +213,9 @@ Resources:
 
       - Key: Environment
         Value: !Ref Environment
+
+      - Key: TemporaryUpdate
+        Value: "1"
 
 # ============================================================================
 # OUTPUTS

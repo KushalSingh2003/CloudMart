@@ -5259,7 +5259,7 @@ EVENT_BUS_NAME = os.environ["EVENT_BUS_NAME"]
 
 ssm = boto3.client("ssm")
 events = boto3.client("events")
-
+cloudwatch = boto3.client("cloudwatch")
 
 # ------------------------------------------------------------
 # Get SSM parameter
@@ -5337,6 +5337,27 @@ def publish_event(detail_type, detail):
         print(
             f"EventBridge error for {detail_type}: {str(e)}"
         )
+# ------------------------------------------------------------
+# Publish CloudWatch business metric
+# ------------------------------------------------------------
+
+def publish_metric(metric_name):
+    try:
+        cloudwatch.put_metric_data(
+            Namespace="CloudMart/Business",
+            MetricData=[
+                {
+                    "MetricName": metric_name,
+                    "Value": 1,
+                    "Unit": "Count"
+                }
+            ]
+        )
+
+        print(f"CloudWatch metric published: {metric_name}")
+
+    except Exception as e:
+        print(f"CloudWatch metric error for {metric_name}: {str(e)}")
 
 
 # ------------------------------------------------------------
@@ -5647,6 +5668,7 @@ def lambda_handler(event, context):
                                 "reason": "Product not found"
                             }
                         )
+                        publish_metric("OrdersFailed")
                         return response(
                             404,
                             {
@@ -5667,6 +5689,7 @@ def lambda_handler(event, context):
                                 "reason": "Insufficient stock"
                             }
                         )
+                        publish_metric("OrdersFailed")
                         return response(
                             400,
                             {
@@ -5774,6 +5797,7 @@ def lambda_handler(event, context):
                                 "reason": "Unable to update stock"
                             }
                         )
+                        publish_metric("OrdersFailed")
                         return response(
                             400,
                             {
@@ -5823,6 +5847,7 @@ def lambda_handler(event, context):
                     "status": "PENDING"
                 }
             )
+            publish_metric("OrdersCreated")
 
             return response(
                 201,
@@ -6224,6 +6249,11 @@ def lambda_handler(event, context):
                             "status": "CONFIRMED"
                         }
                     )
+                    publish_metric("OrdersConfirmed")
+                if status == "COMPLETED":
+                   publish_metric("OrdersCompleted")
+                if status == "CANCELLED":
+                    publish_metric("OrdersCancelled")
 
             return response(
                 200,

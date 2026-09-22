@@ -85,6 +85,7 @@ jobs:
       env:
         STACK_NAME: ${{ inputs.stack_name }}
         PARAMETERS_FILE: ${{ inputs.parameters_file }}
+        TEMPLATE_FILE: ${{ inputs.template_file }}
         TAGS_FILE: ${{ inputs.tags_file }}
         TEMPLATE_S3_URL: ${{ steps.upload.outputs.template_s3_url }}
         AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
@@ -92,6 +93,7 @@ jobs:
         DB_NAME: ${{ secrets.DB_NAME }}
         DB_USERNAME: ${{ secrets.DB_USERNAME }}
         DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        LAMBDA_CODE_BUCKET: ${{ vars.LAMBDA_CODE_BUCKET }}
 
       run: |
         chmod +x .github/scripts/create-changeset.sh

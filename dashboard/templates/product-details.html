@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>{{ product.name }} - CloudMart</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/dashboard.css') }}">
+
+</head>
+
+<body>
+
+<div class="app-container">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+
+        <div class="brand">
+
+            <div class="brand-icon">
+                C
+            </div>
+
+            <div>
+                <h2>CloudMart</h2>
+                <span>Admin Dashboard</span>
+            </div>
+
+        </div>
+
+        <nav class="navigation">
+
+            <a href="/" class="nav-item">
+                <span class="nav-icon">⌂</span>
+                Dashboard
+            </a>
+
+            <a href="/orders" class="nav-item">
+                <span class="nav-icon">◫</span>
+                Orders
+            </a>
+
+            <a href="/products" class="nav-item active">
+                <span class="nav-icon">▦</span>
+                Products
+            </a>
+
+            <a href="/customers" class="nav-item">
+                <span class="nav-icon">♙</span>
+                Customers
+            </a>
+
+        </nav>
+
+        <div class="sidebar-footer">
+            <span>CloudMart</span>
+            <small>Serverless E-Commerce</small>
+        </div>
+
+    </aside>
+
+
+    <!-- Main -->
+    <main class="main-content">
+
+        <header class="topbar">
+
+            <div>
+
+                <h1>Product Details</h1>
+
+                <p>
+                    Detailed information about this product.
+                </p>
+
+            </div>
+
+        </header>
+
+
+        <section class="card product-details-card">
+
+            <div class="card-header">
+
+                <div>
+
+                    <h3>
+                        {{ product.name }}
+                    </h3>
+
+                    <p>
+                        Product #{{ product.product_id }}
+                    </p>
+
+                </div>
+
+                <span class="status-badge">
+                    {{ product.status }}
+                </span>
+
+            </div>
+
+
+            <div class="product-details-grid">
+
+                <div class="detail-item">
+
+                    <span>Product ID</span>
+
+                    <strong>
+                        #{{ product.product_id }}
+                    </strong>
+
+                </div>
+
+
+                <div class="detail-item">
+
+                    <span>Product Name</span>
+
+                    <strong>
+                        {{ product.name }}
+                    </strong>
+
+                </div>
+
+
+                <div class="detail-item">
+
+                    <span>Category</span>
+
+                    <strong>
+                        {{ product.category_name or "Uncategorized" }}
+                    </strong>
+
+                </div>
+
+
+                <div class="detail-item">
+
+                    <span>Category ID</span>
+
+                    <strong>
+                        {{ product.category_id }}
+                    </strong>
+
+                </div>
+
+
+                <div class="detail-item">
+
+                    <span>Price</span>
+
+                    <strong>
+                        ₹{{ "%.2f"|format(product.price|float) }}
+                    </strong>
+
+                </div>
+
+
+                <div class="detail-item">
+
+                    <span>Available Stock</span>
+
+                    <strong>
+                        {{ product.stock }}
+                    </strong>
+
+                </div>
+
+
+                <div class="detail-item">
+
+                    <span>Status</span>
+
+                    <strong>
+                        {{ product.status }}
+                    </strong>
+
+                </div>
+
+
+               
+
+            </div>
+
+
+            <div class="product-description-section">
+
+                <h3>
+                    Description
+                </h3>
+
+                <p>
+                    {{ product.description or "No description available." }}
+                </p>
+
+            </div>
+
+
+            <div class="product-actions">
+
+                <a href="/products" class="back-button">
+                    ← Back to Products
+                </a>
+
+            </div>
+
+        </section>
+
+
+        <footer>
+
+            <span>
+                CloudMart Dashboard
+            </span>
+
+            <span>
+                Connected to RDS MySQL
+            </span>
+
+        </footer>
+
+    </main>
+
+</div>
+
+</body>
+
+</html>

@@ -1,0 +1,859 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >
+  CloudMart Dashboard Stack. Creates a public EC2 instance for hosting the Flask dashboard application.
+
+Parameters:
+
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+    - dev
+    - prod
+
+  InstanceType:
+    Type: String
+    Default: t3.micro
+
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: cloudmart-dashboard-key
+
+  AmiId:
+    Type: AWS::EC2::Image::Id
+    Default: ami-098f18a6382fb4b2d
+
+  LambdaCodeBucket:
+    Type: String
+
+  DashboardS3Key:
+    Type: String
+
+  GitHubRunId:
+    Type: String
+
+Resources:
+
+  # ============================================================
+  # DASHBOARD EC2 IAM ROLE
+  # ============================================================
+
+  DashboardEC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+      - PolicyName: DashboardS3Access
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+
+          - Effect: Allow
+            Action:
+            - s3:GetObject
+            Resource:
+            - !Sub arn:aws:s3:::${LambdaCodeBucket}/dashboard/*
+
+          - Effect: Allow
+            Action:
+            - s3:ListBucket
+            Resource:
+            - !Sub arn:aws:s3:::${LambdaCodeBucket}
+          - Effect: Allow
+            Action:
+            - s3:GetObject
+            Resource:
+            - Fn::Sub:
+              - arn:aws:s3:::${ReportsBucket}/reports/*
+              - ReportsBucket:
+                  Fn::ImportValue: !Sub cloudmart-${Environment}-ReportsBucketName
+
+      - PolicyName: DashboardSSMAccess
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - ssm:GetParameter
+            - ssm:GetParametersByPath
+            Resource:
+            - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db-*
+
+  # ============================================================
+  # DASHBOARD EC2 INSTANCE PROFILE
+  # ============================================================
+
+  DashboardInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+      - !Ref DashboardEC2Role
+
+  SystemDegradedAlarm:
+    Type: AWS::CloudWatch::CompositeAlarm
+    DependsOn:
+    - ProductLambdaErrorsAlarm
+    - OrderLambdaErrorsAlarm
+    - RDSCPUAlarm
+    Properties:
+      AlarmName: !Sub cloudmart-${Environment}-system-degraded
+      AlarmDescription: CloudMart system degradation detected
+
+      AlarmRule: !Sub 'ALARM("cloudmart-${Environment}-product-lambda-errors") OR ALARM("cloudmart-${Environment}-order-lambda-errors") OR ALARM("cloudmart-${Environment}-rds-cpu")'
+
+      ActionsEnabled: true
+
+      AlarmActions:
+      - Fn::ImportValue: !Sub cloudmart-${Environment}-SNSTopicArn
+    # ==========================================================
+    # CLOUDWATCH ALARMS
+    # ==========================================================
+
+  ProductLambdaErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub cloudmart-${Environment}-product-lambda-errors
+      AlarmDescription: Product Lambda errors detected
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+      - Name: FunctionName
+        Value:
+          Fn::ImportValue: !Sub cloudmart-${Environment}-ProductLambdaName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+      - Fn::ImportValue: !Sub cloudmart-${Environment}-SNSTopicArn
+
+  OrderLambdaErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub cloudmart-${Environment}-order-lambda-errors
+      AlarmDescription: Order Lambda errors detected
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+      - Name: FunctionName
+        Value:
+          Fn::ImportValue: !Sub cloudmart-${Environment}-OrderLambdaName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+      - Fn::ImportValue: !Sub cloudmart-${Environment}-SNSTopicArn
+
+  CheckStockLambdaErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub cloudmart-${Environment}-check-stock-lambda-errors
+      AlarmDescription: Check Stock Lambda errors detected
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+      - Name: FunctionName
+        Value:
+          Fn::ImportValue: !Sub cloudmart-${Environment}-CheckStockLambdaName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+      - Fn::ImportValue: !Sub cloudmart-${Environment}-SNSTopicArn
+
+  AuthorizerLambdaErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub cloudmart-${Environment}-authorizer-lambda-errors
+      AlarmDescription: Authorizer Lambda errors detected
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+      - Name: FunctionName
+        Value:
+          Fn::ImportValue: !Sub cloudmart-${Environment}-AuthorizerLambdaName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+      - Fn::ImportValue: !Sub cloudmart-${Environment}-SNSTopicArn
+
+  ReportLambdaErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub cloudmart-${Environment}-report-lambda-errors
+      AlarmDescription: Report Lambda errors detected
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+      - Name: FunctionName
+        Value:
+          Fn::ImportValue: !Sub cloudmart-${Environment}-ReportLambdaName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+      - Fn::ImportValue: !Sub cloudmart-${Environment}-SNSTopicArn
+
+  ApiGatewayLatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub cloudmart-${Environment}-api-p99-latency
+      AlarmDescription: API Gateway P99 latency is too high
+      Namespace: AWS/ApiGateway
+      MetricName: Latency
+      Dimensions:
+      - Name: ApiName
+        Value: !Sub cloudmart-${Environment}-api
+      - Name: Stage
+        Value: !Ref Environment
+      ExtendedStatistic: p99
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 3000
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+      - Fn::ImportValue: !Sub cloudmart-${Environment}-SNSTopicArn
+
+  RDSCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub cloudmart-${Environment}-rds-cpu
+      AlarmDescription: RDS CPU utilization is high
+      Namespace: AWS/RDS
+      MetricName: CPUUtilization
+      Dimensions:
+      - Name: DBInstanceIdentifier
+        Value:
+          Fn::ImportValue: !Sub cloudmart-${Environment}-rds-instance-id
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+      - Fn::ImportValue: !Sub cloudmart-${Environment}-SNSTopicArn
+
+  RDSConnectionsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub cloudmart-${Environment}-rds-connections
+      AlarmDescription: RDS database connections are high
+      Namespace: AWS/RDS
+      MetricName: DatabaseConnections
+      Dimensions:
+      - Name: DBInstanceIdentifier
+        Value:
+          Fn::ImportValue: !Sub cloudmart-${Environment}-rds-instance-id
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+      - Fn::ImportValue: !Sub cloudmart-${Environment}-SNSTopicArn
+
+  CloudWatchDashboard:
+    Type: AWS::CloudWatch::Dashboard
+
+    Properties:
+
+      DashboardName: !Sub CloudMart-${Environment}
+
+      DashboardBody:
+        Fn::Sub:
+        - |
+          {
+            "widgets": [
+
+              {
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 24,
+                "height": 2,
+                "properties": {
+                  "markdown": "# CloudMart Monitoring Dashboard\nEnvironment: ${Environment}"
+                }
+              },
+              {
+                "type": "metric",
+                "x": 0,
+                "y": 32,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "title": "Estimated AWS Charges",
+                  "region": "us-east-1",
+                  "view": "timeSeries",
+                  "stat": "Maximum",
+                  "period": 21600,
+                  "metrics": [
+                    [
+                      "AWS/Billing",
+                      "EstimatedCharges",
+                      "Currency",
+                      "USD"
+                    ]
+                  ]
+                }
+              },
+
+
+              {
+                "type": "metric",
+                "x": 0,
+                "y": 2,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "title": "Lambda Invocations",
+                  "region": "${AWS::Region}",
+                  "view": "timeSeries",
+                  "stat": "Sum",
+                  "period": 300,
+                  "metrics": [
+                    [
+                      "AWS/Lambda",
+                      "Invocations",
+                      "FunctionName",
+                      "${ProductLambda}"
+                    ],
+                    [
+                      "AWS/Lambda",
+                      "Invocations",
+                      "FunctionName",
+                      "${OrderLambda}"
+                    ],
+                    [
+                      "AWS/Lambda",
+                      "Invocations",
+                      "FunctionName",
+                      "${CheckStockLambda}"
+                    ],
+                    [
+                      "AWS/Lambda",
+                      "Invocations",
+                      "FunctionName",
+                      "${AuthorizerLambda}"
+                    ],
+                    [
+                      "AWS/Lambda",
+                      "Invocations",
+                      "FunctionName",
+                      "${ReportLambda}"
+                    ]
+                  ]
+                }
+              },
+
+              {
+                "type": "metric",
+                "x": 12,
+                "y": 2,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "title": "Lambda Errors",
+                  "region": "${AWS::Region}",
+                  "view": "timeSeries",
+                  "stat": "Sum",
+                  "period": 300,
+                  "metrics": [
+                    [
+                      "AWS/Lambda",
+                      "Errors",
+                      "FunctionName",
+                      "${ProductLambda}"
+                    ],
+                    [
+                      "AWS/Lambda",
+                      "Errors",
+                      "FunctionName",
+                      "${OrderLambda}"
+                    ],
+                    [
+                      "AWS/Lambda",
+                      "Errors",
+                      "FunctionName",
+                      "${CheckStockLambda}"
+                    ],
+                    [
+                      "AWS/Lambda",
+                      "Errors",
+                      "FunctionName",
+                      "${AuthorizerLambda}"
+                    ],
+                    [
+                      "AWS/Lambda",
+                      "Errors",
+                      "FunctionName",
+                      "${ReportLambda}"
+                    ]
+                  ]
+                }
+              },
+
+              {
+                "type": "metric",
+                "x": 0,
+                "y": 8,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "title": "Lambda Duration",
+                  "region": "${AWS::Region}",
+                  "view": "timeSeries",
+                  "stat": "Average",
+                  "period": 300,
+                  "metrics": [
+                    [
+                      "AWS/Lambda",
+                      "Duration",
+                      "FunctionName",
+                      "${OrderLambda}"
+                    ],
+                    [
+                      "AWS/Lambda",
+                      "Duration",
+                      "FunctionName",
+                      "${ProductLambda}"
+                    ],
+                    [
+                      "AWS/Lambda",
+                      "Duration",
+                      "FunctionName",
+                      "${CheckStockLambda}"
+                    ],
+                    [
+                      "AWS/Lambda",
+                      "Duration",
+                      "FunctionName",
+                      "${AuthorizerLambda}"
+                    ],
+                    [
+                      "AWS/Lambda",
+                      "Duration",
+                      "FunctionName",
+                      "${ReportLambda}"
+                    ]
+                  ]
+                }
+              },
+
+              {
+                "type": "metric",
+                "x": 12,
+                "y": 8,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "title": "RDS CPU Utilization",
+                  "region": "${AWS::Region}",
+                  "view": "timeSeries",
+                  "stat": "Average",
+                  "period": 300,
+                  "metrics": [
+                    [
+                      "AWS/RDS",
+                      "CPUUtilization",
+                      "DBInstanceIdentifier",
+                      "${RDSInstance}"
+                    ]
+                  ]
+                }
+              },
+
+              {
+                "type": "metric",
+                "x": 0,
+                "y": 14,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "title": "RDS Database Connections",
+                  "region": "${AWS::Region}",
+                  "view": "timeSeries",
+                  "stat": "Average",
+                  "period": 300,
+                  "metrics": [
+                    [
+                      "AWS/RDS",
+                      "DatabaseConnections",
+                      "DBInstanceIdentifier",
+                      "${RDSInstance}"
+                    ]
+                  ]
+                }
+              },
+
+              {
+                "type": "metric",
+                "x": 12,
+                "y": 14,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "title": "Dashboard EC2 CPU",
+                  "region": "${AWS::Region}",
+                  "view": "timeSeries",
+                  "stat": "Average",
+                  "period": 300,
+                  "metrics": [
+                    [
+                      "AWS/EC2",
+                      "CPUUtilization",
+                      "InstanceId",
+                      "${DashboardInstance}"
+                    ]
+                  ]
+                }
+              },
+              {
+            "type": "metric",
+            "x": 0,
+            "y": 20,
+            "width": 12,
+            "height": 6,
+            "properties": {
+              "title": "Order Metrics",
+              "region": "${AWS::Region}",
+              "view": "timeSeries",
+              "stat": "Sum",
+              "period": 300,
+              "metrics": [
+                [ "CloudMart/Business", "OrdersCreated" ],
+                [ "CloudMart/Business", "OrdersConfirmed" ],
+                [ "CloudMart/Business", "OrdersCompleted" ],
+                [ "CloudMart/Business", "OrdersFailed" ],
+                [ "CloudMart/Business", "OrdersCancelled" ]
+              ]
+            }
+          },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 20,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "Product Metrics",
+                "region": "${AWS::Region}",
+                "view": "timeSeries",
+                "stat": "Sum",
+                "period": 300,
+                "metrics": [
+                  [ "CloudMart/Business", "ProductsAdded" ],
+                  [ "CloudMart/Business", "ProductsDeleted" ],
+                  [ "CloudMart/Business", "LowStockAlerts" ]
+                ]
+              }
+            },
+                        
+              {
+                "type": "metric",
+                "x": 0,
+                "y": 26,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "title": "API Gateway Errors",
+                  "region": "${AWS::Region}",
+                  "view": "timeSeries",
+                  "stat": "Sum",
+                  "period": 300,
+                  "metrics": [
+                    [
+                      "AWS/ApiGateway",
+                      "4XXError",
+                      "ApiName",
+                      "${ApiGatewayName}",
+                      "Stage",
+                      "${ApiGatewayStage}"
+                    ],
+                    [
+                      "AWS/ApiGateway",
+                      "5XXError",
+                      "ApiName",
+                      "${ApiGatewayName}",
+                      "Stage",
+                      "${ApiGatewayStage}"
+                    ]
+                  ]
+                }
+              },
+              {
+                "type": "metric",
+                "x": 12,
+                "y": 26,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "title": "API Gateway P99 Latency",
+                  "region": "${AWS::Region}",
+                  "view": "timeSeries",
+                  "stat": "p99",
+                  "period": 300,
+                  "metrics": [
+                    [
+                      "AWS/ApiGateway",
+                      "Latency",
+                      "ApiName",
+                      "${ApiGatewayName}",
+                      "Stage",
+                      "${ApiGatewayStage}"
+                    ]
+                  ]
+                }
+              }
+
+            ]
+          }
+        - ProductLambda:
+            Fn::ImportValue: !Sub cloudmart-${Environment}-ProductLambdaName
+
+          OrderLambda:
+            Fn::ImportValue: !Sub cloudmart-${Environment}-OrderLambdaName
+
+          CheckStockLambda:
+            Fn::ImportValue: !Sub cloudmart-${Environment}-CheckStockLambdaName
+
+          AuthorizerLambda:
+            Fn::ImportValue: !Sub cloudmart-${Environment}-AuthorizerLambdaName
+
+          ReportLambda:
+            Fn::ImportValue: !Sub cloudmart-${Environment}-ReportLambdaName
+          ApiGatewayName:
+            Fn::Sub: cloudmart-${Environment}-api
+
+          ApiGatewayStage:
+            Fn::Sub: ${Environment}
+
+          RDSInstance:
+            Fn::ImportValue: !Sub cloudmart-${Environment}-rds-instance-id
+
+          DashboardInstance:
+            Ref: DashboardEC2
+
+  # ============================================================
+  # DASHBOARD EC2
+  # ============================================================
+
+  DashboardEC2:
+    Type: AWS::EC2::Instance
+
+    Properties:
+      ImageId: !Ref AmiId
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyPairName
+
+      IamInstanceProfile: !Ref DashboardInstanceProfile
+
+      SubnetId:
+        Fn::ImportValue: !Sub cloudmart-${Environment}-PublicSubnetId
+
+      SecurityGroupIds:
+      - Fn::ImportValue: !Sub cloudmart-${Environment}-EC2SecurityGroupId
+      # UserData:
+      #   Fn::Base64: !Sub |
+      #     #!/bin/bash
+
+      #     set -e
+
+      #     # Update system
+      #     dnf update -y
+
+      #     # Install required packages
+      #     dnf install -y python3 python3-pip unzip
+
+      #     # Create dashboard directory
+      #     mkdir -p /opt/cloudmart-dashboard
+
+      #     # Download dashboard package from S3
+      #     cd /opt/cloudmart-dashboard
+
+      #     aws s3 cp \
+      #       s3://${LambdaCodeBucket}/${DashboardS3Key} \
+      #       /tmp/dashboard.zip
+
+      #     # Extract dashboard
+      #     unzip -o /tmp/dashboard.zip \
+      #       -d /opt/cloudmart-dashboard
+
+      #     # Create Python virtual environment
+      #     python3 -m venv venv
+
+      #     # Activate virtual environment
+      #     source venv/bin/activate
+
+      #     # Upgrade pip
+      #     pip install --upgrade pip
+
+      #     # Install dashboard dependencies
+      #     pip install -r requirements.txt
+      #     cat > /etc/cloudmart-dashboard.env <<EOF
+      #     REPORTS_BUCKET_NAME=${ReportsBucketName}
+      #     EOF
+
+      #     # Create systemd service
+      #     cat > /etc/systemd/system/cloudmart-dashboard.service <<'EOF'
+      #     [Unit]
+      #     Description=CloudMart Flask Dashboard
+      #     After=network.target
+
+      #     [Service]
+      #     WorkingDirectory=/opt/cloudmart-dashboard
+      #     ExecStart=/opt/cloudmart-dashboard/venv/bin/python app.py
+      #     Restart=always
+      #     RestartSec=5
+
+      #     [Install]
+      #     WantedBy=multi-user.target
+      #     EOF
+
+      #     # Reload systemd
+      #     systemctl daemon-reload
+
+      #     # Enable dashboard service
+      #     systemctl enable cloudmart-dashboard
+
+      #     # Start dashboard
+      #     systemctl start cloudmart-dashboard
+      UserData:
+        Fn::Base64:
+          Fn::Sub:
+          - |
+            #!/bin/bash
+
+            set -e
+
+            # Update system
+            dnf update -y
+
+            # Install required packages
+            dnf install -y python3 python3-pip unzip
+
+            # Create dashboard directory
+            mkdir -p /opt/cloudmart-dashboard
+
+            # Download dashboard package from S3
+            cd /opt/cloudmart-dashboard
+
+            aws s3 cp \
+              s3://${LambdaCodeBucket}/${DashboardS3Key} \
+              /tmp/dashboard.zip
+
+            # Extract dashboard
+            unzip -o /tmp/dashboard.zip \
+              -d /opt/cloudmart-dashboard
+
+            # Create Python virtual environment
+            python3 -m venv venv
+
+            # Activate virtual environment
+            source venv/bin/activate
+
+            # Upgrade pip
+            pip install --upgrade pip
+
+            # Install dashboard dependencies
+            pip install -r requirements.txt
+
+            # Store CloudMart configuration
+            cat > /etc/cloudmart-dashboard.env <<EOF
+            REPORTS_BUCKET_NAME=${ReportsBucketName}
+            EOF
+
+            # Create systemd service
+            cat > /etc/systemd/system/cloudmart-dashboard.service <<'EOF'
+            [Unit]
+            Description=CloudMart Flask Dashboard
+            After=network.target
+
+            [Service]
+            WorkingDirectory=/opt/cloudmart-dashboard
+            EnvironmentFile=/etc/cloudmart-dashboard.env
+            ExecStart=/opt/cloudmart-dashboard/venv/bin/python app.py
+            Restart=always
+            RestartSec=5
+
+            [Install]
+            WantedBy=multi-user.target
+            EOF
+
+            # Reload systemd
+            systemctl daemon-reload
+
+            # Enable dashboard service
+            systemctl enable cloudmart-dashboard
+
+            # Start dashboard
+            systemctl start cloudmart-dashboard
+
+          - ReportsBucketName:
+              Fn::ImportValue: !Sub cloudmart-${Environment}-ReportsBucketName
+
+      Tags:
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-dashboard-ec2
+
+      - Key: Project
+        Value: CloudMart
+
+      - Key: Environment
+        Value: !Ref Environment
+
+      - Key: GitHubRunId
+        Value: !Ref GitHubRunId
+
+# ============================================================
+# OUTPUTS
+# ============================================================
+
+Outputs:
+
+  DashboardInstanceId:
+    Description: Dashboard EC2 Instance ID
+    Value: !Ref DashboardEC2
+
+  DashboardPublicIp:
+    Description: Dashboard EC2 Public IP
+    Value: !GetAtt DashboardEC2.PublicIp
+
+  DashboardPublicDns:
+    Description: Dashboard EC2 Public DNS
+    Value: !GetAtt DashboardEC2.PublicDnsName
+
+  DashboardUrl:
+    Description: CloudMart Dashboard URL
+    Value: !Sub
+      - http://${PublicIp}
+      - PublicIp: !GetAtt DashboardEC2.PublicIp

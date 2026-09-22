@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS Customers (
     email VARCHAR(255) NOT NULL UNIQUE,
     phone VARCHAR(20),
     Role ENUM('customer', 'Admin') NOT NULL DEFAULT 'customer',
+    token VARCHAR(512) UNIQUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     
 );
@@ -29,7 +30,7 @@ CREATE TABLE IF NOT EXISTS Products (
 
 CREATE TABLE IF NOT EXISTS Orders (
     order_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    customer_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
     total_amount DECIMAL(10,2) NOT NULL,
     status VARCHAR(50) NOT NULL,
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
@@ -39,8 +40,8 @@ CREATE TABLE IF NOT EXISTS Orders (
     cancel_reason VARCHAR(500),
 
     CONSTRAINT fk_order_customer
-        FOREIGN KEY (customer_id)
-        REFERENCES Customers(customer_id)
+        FOREIGN KEY (user_id)
+        REFERENCES Customers(user_id)
 );
 
 CREATE TABLE IF NOT EXISTS Orders_Items (
@@ -63,7 +64,7 @@ CREATE TABLE IF NOT EXISTS Orders_Items (
 CREATE TABLE IF NOT EXISTS Orders_History (
     order_history_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     order_id BIGINT NOT NULL,
-    customer_id BIGINT,
+    user_id BIGINT,
     total_amount DECIMAL(10,2),
     status VARCHAR(50),
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
@@ -77,6 +78,6 @@ CREATE TABLE IF NOT EXISTS Orders_History (
         REFERENCES Orders(order_id),
 
     CONSTRAINT fk_history_customer
-        FOREIGN KEY (customer_id)
-        REFERENCES Customers(customer_id)
+        FOREIGN KEY (user_id)
+        REFERENCES Customers(user_id)
 );
