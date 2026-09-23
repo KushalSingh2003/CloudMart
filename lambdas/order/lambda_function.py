@@ -5251,6 +5251,8 @@ DB_USER_PARAMETER = os.environ["DB_USER_PARAMETER"]
 DB_PASSWORD_PARAMETER = os.environ["DB_PASSWORD_PARAMETER"]
 
 EVENT_BUS_NAME = os.environ["EVENT_BUS_NAME"]
+MAX_ORDER_ITEMS = int(os.environ["MAX_ORDER_ITEMS"])
+MAX_ITEM_QUANTITY = int(os.environ["MAX_ITEM_QUANTITY"])
 
 
 # ------------------------------------------------------------
@@ -5375,7 +5377,7 @@ def get_authenticated_user(event):
     user_id = authorizer.get("user_id")
     role = authorizer.get("role")
 
-    if not user_id:
+    if user_id is None:
         return None, None
 
     try:
@@ -5401,16 +5403,45 @@ def lambda_handler(event, context):
         http_method = event.get("httpMethod")
 
         path_parameters = event.get("pathParameters") or {}
+        
         order_id = path_parameters.get("orderId")
+
+        if order_id is not None:
+            try:
+                order_id = int(order_id)
+            except (ValueError, TypeError):
+                return response(
+                    400,
+                    {
+                        "message": "OrderID must be a valid integer"
+                    }
+                )
+
+            if order_id <= 0:
+                return response(
+                    400,
+                    {
+                        "message": "OrderID must be a positive integer"
+                    }
+                )
+
+        
 
         body = event.get("body")
 
         if body:
             body = json.loads(body)
+            if not isinstance(body, dict):
+                return response(
+                    400,
+                    {
+                        "message": "Request body must be a JSON object"
+                    }
+                )
 
         user_id, role = get_authenticated_user(event)
 
-        if not user_id:
+        if user_id is None:
             return response(
                 401,
                 {
@@ -5569,6 +5600,7 @@ def lambda_handler(event, context):
                 )
 
             items = body.get("Items")
+           
 
             if not isinstance(items, list) or not items:
                 return response(
@@ -5576,6 +5608,12 @@ def lambda_handler(event, context):
                     {
                         "message": "Items must be a non-empty list"
                     }
+                )
+            if len(items) > MAX_ORDER_ITEMS:
+                return response(
+                    400,
+                    {
+                        "message": f"Order cannot contain more than {MAX_ORDER_ITEMS} items"}
                 )
 
             with connection.cursor() as cursor:
@@ -5620,17 +5658,27 @@ def lambda_handler(event, context):
                         isinstance(quantity, bool)
                         or not isinstance(quantity, int)
                         or quantity <= 0
+                        or quantity > MAX_ITEM_QUANTITY
                     ):
                         connection.rollback()
                         return response(
                             400,
                             {
-                                "message": "Quantity must be a positive integer"
+                                "message": f"Quantity must be a positive integer between 1 and {MAX_ITEM_QUANTITY}"
                             }
                         )
 
                     if product_id in combined_items:
                         combined_items[product_id] += quantity
+
+                        if combined_items[product_id] > MAX_ITEM_QUANTITY:
+                            connection.rollback()
+                            return response(
+                                400,
+                                {
+                                    "message": f"Total quantity for ProductID {product_id} cannot exceed {MAX_ITEM_QUANTITY}"
+                                }
+                            )
                     else:
                         combined_items[product_id] = quantity
 
@@ -5638,7 +5686,7 @@ def lambda_handler(event, context):
                 # Validate products and calculate total
                 # ------------------------------------------------
 
-                for product_id, quantity in combined_items.items():
+                for product_id, quantity in sorted(combined_items.items()):
 
                     cursor.execute(
                         """
@@ -5908,10 +5956,10 @@ def lambda_handler(event, context):
                     "Status",
                     "CancelReason"
                 }
-
+                # if the customer tries to modify any other field, return an error
                 customer_invalid_fields = [
                     field
-                    for field in body
+                    for field in body # going through the fields in the request body
                     if field not in customer_allowed_fields
                 ]
 
@@ -5950,7 +5998,7 @@ def lambda_handler(event, context):
                           AND user_id = %s
                         FOR UPDATE
                         """,
-                        (order_id, user_id)
+                        (order_id, user_id)# user id makes sure tghat customers can only access their own orders
                     )
                 else:
                     cursor.execute(
@@ -6000,6 +6048,7 @@ def lambda_handler(event, context):
                 # ------------------------------------------------
                 # ADMIN: Customer ID
                 # ------------------------------------------------
+                # the admin can change the customer id of an order, but it must be a valid customer id
 
                 if role == "ADMIN" and "USERID" in body:
 
@@ -6174,6 +6223,49 @@ def lambda_handler(event, context):
                             order_id
                         )
                     )
+                elif (
+                    old_status == "CANCELLED"
+                    and status != "CANCELLED"
+                ):
+                    cursor.execute(
+                        """
+                        SELECT
+                            product_id,
+                            quantity
+                        FROM Orders_Items
+                        WHERE order_id = %s
+                        FOR UPDATE
+                        """,
+                        (order_id,)
+                    )
+
+                    order_items = cursor.fetchall()
+
+                    for item in order_items:
+                        cursor.execute(
+                            """
+                            UPDATE Products
+                            SET stock = stock - %s
+                            WHERE product_id = %s
+                            AND stock >= %s
+                            """,
+                            (
+                                item["quantity"],
+                                item["product_id"],
+                                item["quantity"]
+                            )
+                        )
+
+                        if cursor.rowcount == 0:
+                            connection.rollback()
+                            return response(
+                                400,
+                                {
+                                    "message": "Insufficient stock to reactivate order",
+                                    "ProductID": item["product_id"],
+                                    "RequiredQuantity": item["quantity"]
+                                }
+                            )
 
                 else:
 
@@ -6530,6 +6622,33 @@ def lambda_handler(event, context):
                             "message": "Active order not found"
                         }
                     )
+                # Restore stock when deleting an order that was not already cancelled
+                if existing_order["status"] != "CANCELLED":
+
+                    cursor.execute(
+                        """
+                        SELECT product_id, quantity
+                        FROM Orders_Items
+                        WHERE order_id = %s
+                        FOR UPDATE
+                        """,
+                        (order_id,)
+                    )
+
+                    order_items = cursor.fetchall()
+
+                    for item in order_items:
+                        cursor.execute(
+                            """
+                            UPDATE Products
+                            SET stock = stock + %s
+                            WHERE product_id = %s
+                            """,
+                            (
+                                item["quantity"],
+                                item["product_id"]
+                            )
+                        )
 
                 cursor.execute(
                     """
