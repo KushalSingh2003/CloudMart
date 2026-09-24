@@ -873,6 +873,7 @@
 # adding a new comment 
 # adding a another comment
 #just another comment to check for dashboard stack
+# just another comment
 import os
 import json
 from decimal import Decimal, InvalidOperation
@@ -1414,7 +1415,7 @@ def lambda_handler(event, context):
                     """
                 )
 
-                total = cursor.fetchone()[0]
+                total = cursor.fetchone()["total"]
                 total_pages = (total + limit - 1) // limit
 
             connection.commit()
