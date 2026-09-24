@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS Customers (
     email VARCHAR(255) NOT NULL UNIQUE,
     phone VARCHAR(20),
     Role ENUM('customer', 'Admin') NOT NULL DEFAULT 'customer',
-    token VARCHAR(512) UNIQUE,
+    token VARCHAR(512),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     
 );
@@ -32,8 +32,9 @@ CREATE TABLE IF NOT EXISTS Products (
     stock INT NOT NULL DEFAULT 0,
     status VARCHAR(50) NOT NULL,
     category_id BIGINT NOT NULL,
-    min_order_quantity INT NOT NULL DEFAULT 1,
-    max_order_quantity INT NOT NULL DEFAULT 100,
+    min_stock_quantity INT NOT NULL DEFAULT 1,
+    max_stock_quantity INT NOT NULL DEFAULT 100,
+    max_order_quantity INT NOT NULL DEFAULT 10,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_product_category
