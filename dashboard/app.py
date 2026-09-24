@@ -271,11 +271,12 @@ def login():
                     error="Invalid User ID or token."
                 )
 
-            if user["Role"] != "ADMIN":
+            if not user["Role"] or user["Role"].upper() != "ADMIN":
                 return render_template(
                     "login.html",
                     error="Access denied. Admin access required."
                 )
+                    
 
             session["user_id"] = user["user_id"]
             session["name"] = user["name"]
