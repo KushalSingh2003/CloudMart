@@ -1223,6 +1223,38 @@ def get_ssm_parameter(parameter_name):
     )
 
     return response["Parameter"]["Value"]
+# ============================================================
+# Cached Database Configuration
+# ============================================================
+
+_db_config = None
+
+
+def get_db_config():
+
+    global _db_config
+
+    if _db_config is None:
+
+        _db_config = {
+            "host": get_ssm_parameter(DB_HOST_PARAMETER),
+            "port": int(
+                get_ssm_parameter(DB_PORT_PARAMETER)
+            ),
+            "database": get_ssm_parameter(
+                DB_NAME_PARAMETER
+            ),
+            "user": get_ssm_parameter(
+                DB_USER_PARAMETER
+            ),
+            "password": get_ssm_parameter(
+                DB_PASSWORD_PARAMETER
+            )
+        }
+
+        print("Database configuration loaded from SSM")
+
+    return _db_config
 
 
 # ============================================================
@@ -1231,34 +1263,14 @@ def get_ssm_parameter(parameter_name):
 
 def get_connection():
 
-    host = get_ssm_parameter(
-        DB_HOST_PARAMETER
-    )
-
-    port = int(
-        get_ssm_parameter(
-            DB_PORT_PARAMETER
-        )
-    )
-
-    database = get_ssm_parameter(
-        DB_NAME_PARAMETER
-    )
-
-    user = get_ssm_parameter(
-        DB_USER_PARAMETER
-    )
-
-    password = get_ssm_parameter(
-        DB_PASSWORD_PARAMETER
-    )
+    config = get_db_config()
 
     return pymysql.connect(
-        host=host,
-        port=port,
-        user=user,
-        password=password,
-        database=database,
+        host=config["host"],
+        port=config["port"],
+        user=config["user"],
+        password=config["password"],
+        database=config["database"],
         cursorclass=pymysql.cursors.DictCursor,
         autocommit=False
     )
