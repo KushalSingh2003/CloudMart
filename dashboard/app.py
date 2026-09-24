@@ -280,7 +280,8 @@ def login():
 
             session["user_id"] = user["user_id"]
             session["name"] = user["name"]
-            session["role"] = user["Role"]
+            #user can enter anything
+            session["role"] = user["Role"].upper()
 
             return redirect(url_for("dashboard"))
 
