@@ -894,7 +894,7 @@ DB_PASSWORD_PARAMETER = os.environ["DB_PASSWORD_PARAMETER"]
 ssm = boto3.client("ssm")
 events = boto3.client("events")
 cloudwatch = boto3.client("cloudwatch")
-LOW_STOCK_THRESHOLD = 5
+
 
 
 def get_ssm_parameter(parameter_name):
@@ -1202,6 +1202,62 @@ def validate_product_request(body):
                 }
             )
         )
+        # --------------------------------------------------------
+    # Stock quantity limits validation
+    # --------------------------------------------------------
+
+    min_stock_quantity = body.get("MinStockQuantity", 1)
+    max_stock_quantity = body.get("MaxStockQuantity", 100)
+    max_order_quantity = body.get("MaxOrderQuantity", 10)
+
+    for field_name, value in [
+        ("MinStockQuantity", min_stock_quantity),
+        ("MaxStockQuantity", max_stock_quantity),
+        ("MaxOrderQuantity", max_order_quantity)
+    ]:
+        if isinstance(value, bool) or not isinstance(value, int):
+            return (
+                False,
+                response(
+                    400,
+                    {
+                        "message": f"{field_name} must be a positive integer"
+                    }
+                )
+            )
+
+        if value < 1:
+            return (
+                False,
+                response(
+                    400,
+                    {
+                        "message": f"{field_name} must be greater than zero"
+                    }
+                )
+            )
+
+    if min_stock_quantity > max_stock_quantity:
+        return (
+            False,
+            response(
+                400,
+                {
+                    "message": "MinStockQuantity cannot be greater than MaxStockQuantity"
+                }
+            )
+        )
+
+    if stock > max_stock_quantity:
+        return (
+            False,
+            response(
+                400,
+                {
+                    "message": "Stock cannot be greater than MaxStockQuantity"
+                }
+            )
+        )
 
 
     return (
@@ -1211,7 +1267,10 @@ def validate_product_request(body):
             "Description": description,
             "Price": price,
             "Stock": stock,
-            "CategoryID": category_id
+            "CategoryID": category_id,
+            "MinStockQuantity": min_stock_quantity,
+            "MaxStockQuantity": max_stock_quantity,
+            "MaxOrderQuantity": max_order_quantity
         }
     )
 
@@ -1292,6 +1351,9 @@ def lambda_handler(event, context):
         # ----------------------------------------------------
 
         body = event.get("body")
+        query_params = event.get("queryStringParameters") or {}
+        
+
 
         if body:
 
@@ -1303,6 +1365,7 @@ def lambda_handler(event, context):
         # ====================================================
 
         if http_method == "GET" and not product_id:
+            
             try:
                 page = int(query_params.get("page", 1))
                 limit = int(query_params.get("limit", 20))
@@ -1327,6 +1390,9 @@ def lambda_handler(event, context):
                         description AS Description,
                         price AS Price,
                         stock AS Stock,
+                        min_stock_quantity as MinStockQuantity,
+                        max_stock_quantity as MaxStockQuantity,
+                        max_order_quantity as MaxOrderQuantity,
                         category_id AS CategoryID,
                         status AS Status
                     FROM Products
@@ -1382,6 +1448,9 @@ def lambda_handler(event, context):
                         description AS Description,
                         price AS Price,
                         stock AS Stock,
+                        min_stock_quantity as MinStockQuantity,
+                        max_stock_quantity as MaxStockQuantity,
+                        max_order_quantity as MaxOrderQuantity,
                         category_id AS CategoryID,
                         status AS Status
                     FROM Products
@@ -1448,6 +1517,9 @@ def lambda_handler(event, context):
             price = result["Price"]
             stock = result["Stock"]
             category_id = result["CategoryID"]
+            min_stock_quantity = result["MinStockQuantity"]
+            max_stock_quantity = result["MaxStockQuantity"]
+            max_order_quantity = result["MaxOrderQuantity"]
 
 
             # ------------------------------------------------
@@ -1481,11 +1553,17 @@ def lambda_handler(event, context):
                         description,
                         price,
                         stock,
+                        min_stock_quantity,
+                        max_stock_quantity,
+                        max_order_quantity,
                         category_id,
                         status
                     )
                     VALUES
                     (
+                        %s,
+                        %s,
+                        %s,
                         %s,
                         %s,
                         %s,
@@ -1499,7 +1577,11 @@ def lambda_handler(event, context):
                         description,
                         price,
                         stock,
+                        min_stock_quantity,
+                        max_stock_quantity,
+                        max_order_quantity,
                         category_id
+                        
                     )
                 )
 
@@ -1508,7 +1590,7 @@ def lambda_handler(event, context):
 
 
             connection.commit()
-            if stock < LOW_STOCK_THRESHOLD:
+            if stock < min_stock_quantity:
                 try:
                     events.put_events(
                         Entries=[
@@ -1519,7 +1601,7 @@ def lambda_handler(event, context):
                                 "Detail": json.dumps({
                                     "ProductID": new_product_id,
                                     "Stock": stock,
-                                    "Threshold": LOW_STOCK_THRESHOLD
+                                    "Threshold": min_stock_quantity
                                 })
                             }
                         ]
@@ -1573,6 +1655,9 @@ def lambda_handler(event, context):
             price = result["Price"]
             stock = result["Stock"]
             category_id = result["CategoryID"]
+            min_stock_quantity = result["MinStockQuantity"]
+            max_stock_quantity = result["MaxStockQuantity"]
+            max_order_quantity = result["MaxOrderQuantity"]
 
 
             # ------------------------------------------------
@@ -1606,6 +1691,9 @@ def lambda_handler(event, context):
                         description = %s,
                         price = %s,
                         stock = %s,
+                        min_stock_quantity = %s,
+                        max_stock_quantity = %s,
+                        max_order_quantity = %s,
                         category_id = %s
                     WHERE product_id = %s
                     AND status = 'ACTIVE'
@@ -1615,6 +1703,9 @@ def lambda_handler(event, context):
                         description,
                         price,
                         stock,
+                        min_stock_quantity,
+                        max_stock_quantity,
+                        max_order_quantity,
                         category_id,
                         product_id
                     )
@@ -1640,7 +1731,7 @@ def lambda_handler(event, context):
             # Low stock event
             # ------------------------------------------------
 
-            if stock < LOW_STOCK_THRESHOLD:
+            if stock < min_stock_quantity:
                 try:
                     events.put_events(
                         Entries=[
@@ -1651,7 +1742,7 @@ def lambda_handler(event, context):
                             "Detail": json.dumps({
                                 "ProductID": product_id,
                                 "Stock": stock,
-                                "Threshold": LOW_STOCK_THRESHOLD
+                                "Threshold": min_stock_quantity
                                                 })
                                             }
                                         ]
@@ -1696,7 +1787,11 @@ def lambda_handler(event, context):
                 "Description",
                 "Price",
                 "Stock",
-                "CategoryID"
+                "CategoryID",
+                "MinStockQuantity",
+                "MaxStockQuantity",
+                "MaxOrderQuantity"
+
             }
 
             unknown_fields = [
@@ -1712,6 +1807,77 @@ def lambda_handler(event, context):
                     {
                         "message": "Invalid fields",
                         "fields": unknown_fields
+                    }
+                )
+            # Get existing product quantity limits
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT
+                        min_stock_quantity,
+                        max_stock_quantity,
+                        max_order_quantity
+                    FROM Products
+                    WHERE product_id = %s
+                    AND status = 'ACTIVE'
+                    """,
+                    (product_id,)
+                )
+
+                existing_product = cursor.fetchone()
+
+            if not existing_product:
+                return response(
+                    404,
+                    {"message": "Product not found"}
+                )
+            # Validate stock quantity limits
+
+            min_stock_quantity = body.get(
+                "MinStockQuantity",
+                existing_product["min_stock_quantity"]
+            )
+
+            max_stock_quantity = body.get(
+                "MaxStockQuantity",
+                existing_product["max_stock_quantity"]
+            )
+
+            max_order_quantity = body.get(
+                "MaxOrderQuantity",
+                existing_product["max_order_quantity"]
+            )
+
+            for field_name, value in [
+                ("MinStockQuantity", min_stock_quantity),
+                ("MaxStockQuantity", max_stock_quantity),
+                ("MaxOrderQuantity", max_order_quantity)
+            ]:
+                if isinstance(value, bool) or not isinstance(value, int):
+                    return response(
+                        400,
+                        {"message": f"{field_name} must be a positive integer"}
+                    )
+
+                if value < 1:
+                    return response(
+                        400,
+                        {"message": f"{field_name} must be greater than zero"}
+                    )
+
+            if min_stock_quantity > max_stock_quantity:
+                return response(
+                    400,
+                    {
+                        "message": "MinStockQuantity cannot be greater than MaxStockQuantity"
+                    }
+                )
+
+            if "Stock" in body and body["Stock"] > max_stock_quantity:
+                return response(
+                    400,
+                    {
+                        "message": "Stock cannot be greater than MaxStockQuantity"
                     }
                 )
 
@@ -1810,6 +1976,17 @@ def lambda_handler(event, context):
             if "CategoryID" in body:
                 update_fields.append("category_id = %s")
                 values.append(body["CategoryID"])
+            if "MinStockQuantity" in body:
+                update_fields.append("min_stock_quantity = %s")
+                values.append(min_stock_quantity)
+
+            if "MaxStockQuantity" in body:
+                update_fields.append("max_stock_quantity = %s")
+                values.append(max_stock_quantity)
+
+            if "MaxOrderQuantity" in body:
+                update_fields.append("max_order_quantity = %s")
+                values.append(max_order_quantity)
 
             values.append(product_id)
 
@@ -1834,7 +2011,7 @@ def lambda_handler(event, context):
                 connection.commit()
 
                 # Low stock event
-                if "Stock" in body and body["Stock"] < LOW_STOCK_THRESHOLD:
+                if "Stock" in body and body["Stock"] < min_stock_quantity:
                     try:
                         events.put_events(
                             Entries=[
@@ -1845,7 +2022,7 @@ def lambda_handler(event, context):
                                     "Detail": json.dumps({
                                         "ProductID": product_id,
                                         "Stock": body["Stock"],
-                                        "Threshold": LOW_STOCK_THRESHOLD
+                                        "Threshold": min_stock_quantity
                                     })
                                 }
                             ]
