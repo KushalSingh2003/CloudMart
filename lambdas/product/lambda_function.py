@@ -1303,6 +1303,19 @@ def lambda_handler(event, context):
         # ====================================================
 
         if http_method == "GET" and not product_id:
+            try:
+                page = int(query_params.get("page", 1))
+                limit = int(query_params.get("limit", 20))
+            except (ValueError, TypeError):
+                return response(400, {"error": "page and limit must be integers"})
+
+            if page < 1:
+                return response(400, {"error": "page must be greater than 0"})
+
+            if limit < 1 or limit > 100:
+                return response(400, {"error": "limit must be between 1 and 100"})
+            offset = (page - 1) * limit
+            
 
             with connection.cursor() as cursor:
 
@@ -1318,16 +1331,38 @@ def lambda_handler(event, context):
                         status AS Status
                     FROM Products
                     WHERE status = 'ACTIVE'
+                    ORDER BY product_id
+                    LIMIT %s OFFSET %s
                     """
+                    ,
+                    (limit, offset)
                 )
 
                 products = cursor.fetchall()
+                cursor.execute(
+                    """
+                    SELECT COUNT(*)
+                    FROM Products
+                    WHERE status = 'ACTIVE'
+                    """
+                )
+
+                total = cursor.fetchone()[0]
+                total_pages = (total + limit - 1) // limit
 
             connection.commit()
 
             return response(
                 200,
-                products
+                {
+                    "products": products,
+                    "pagination": {
+                        "page": page,
+                        "limit": limit,
+                        "total": total,
+                        "total_pages": total_pages
+                    }
+                }
             )
 
 
@@ -1473,6 +1508,26 @@ def lambda_handler(event, context):
 
 
             connection.commit()
+            if stock < LOW_STOCK_THRESHOLD:
+                try:
+                    events.put_events(
+                        Entries=[
+                            {
+                                "EventBusName": os.environ["EVENT_BUS_NAME"],
+                                "Source": "cloudmart.inventory",
+                                "DetailType": "Low Stock Alert",
+                                "Detail": json.dumps({
+                                    "ProductID": new_product_id,
+                                    "Stock": stock,
+                                    "Threshold": LOW_STOCK_THRESHOLD
+                                })
+                            }
+                        ]
+                    )
+                    publish_metric("LowStockAlert")
+                except Exception as e:
+                    print(f"Error publishing low stock event: {str(e)}")
+                print(f"Low stock event published for ProductID: {new_product_id}, Stock: {stock}")
             publish_metric("ProductsAdded")
 
             return response(
@@ -1586,10 +1641,10 @@ def lambda_handler(event, context):
             # ------------------------------------------------
 
             if stock < LOW_STOCK_THRESHOLD:
-
-                events.put_events(
-                    Entries=[
-                        {
+                try:
+                    events.put_events(
+                        Entries=[
+                         {
                             "EventBusName": os.environ["EVENT_BUS_NAME"],
                             "Source": "cloudmart.inventory",
                             "DetailType": "Low Stock Alert",
@@ -1597,11 +1652,16 @@ def lambda_handler(event, context):
                                 "ProductID": product_id,
                                 "Stock": stock,
                                 "Threshold": LOW_STOCK_THRESHOLD
-                            })
-                        }
-                    ]
-                )
-                publish_metric("LowStockAlert")
+                                                })
+                                            }
+                                        ]
+                                    )
+                    publish_metric("LowStockAlert")
+                except Exception as e:
+                    print(f"Error publishing low stock event: {str(e)}")
+            
+
+                
 
 
             return response(
@@ -1775,20 +1835,24 @@ def lambda_handler(event, context):
 
                 # Low stock event
                 if "Stock" in body and body["Stock"] < LOW_STOCK_THRESHOLD:
-                    events.put_events(
-                        Entries=[
-                            {
-                                "EventBusName": os.environ["EVENT_BUS_NAME"],
-                                "Source": "cloudmart.inventory",
-                                "DetailType": "Low Stock Alert",
-                                "Detail": json.dumps({
-                                    "ProductID": product_id,
-                                    "Stock": body["Stock"],
-                                    "Threshold": LOW_STOCK_THRESHOLD
-                                })
-                            }
-                        ]
-                    )
+                    try:
+                        events.put_events(
+                            Entries=[
+                                {
+                                    "EventBusName": os.environ["EVENT_BUS_NAME"],
+                                    "Source": "cloudmart.inventory",
+                                    "DetailType": "Low Stock Alert",
+                                    "Detail": json.dumps({
+                                        "ProductID": product_id,
+                                        "Stock": body["Stock"],
+                                        "Threshold": LOW_STOCK_THRESHOLD
+                                    })
+                                }
+                            ]
+                        )
+                        publish_metric("LowStockAlert")
+                    except Exception as e:
+                        print(f"Error publishing low stock event: {str(e)}")
 
                 return response(
                     200,
