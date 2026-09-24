@@ -1409,13 +1409,19 @@ def lambda_handler(event, context):
                 products = cursor.fetchall()
                 cursor.execute(
                     """
-                    SELECT COUNT(*)
+                    SELECT COUNT(*) AS total
                     FROM Products
                     WHERE status = 'ACTIVE'
                     """
                 )
+                count_result = cursor.fetchone()
 
-                total = cursor.fetchone()["total"]
+                print("COUNT RESULT:", count_result)
+
+                total = count_result["total"]
+                
+
+                
                 total_pages = (total + limit - 1) // limit
 
             connection.commit()
