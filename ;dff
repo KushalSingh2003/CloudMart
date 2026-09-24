@@ -1,0 +1,15 @@
+  feature/Order-API[m
+  feature/admin-login[m
+  feature/database-initializer[m
+  feature/reporting-monitoring[m
+  fix/order-lambda[m
+* [32mfix/product-lambda[m
+  main[m
+  [31mremotes/origin/HEAD[m -> origin/main
+  [31mremotes/origin/feature/Order-API[m
+  [31mremotes/origin/feature/admin-login[m
+  [31mremotes/origin/feature/database-initializer[m
+  [31mremotes/origin/feature/reporting-monitoring[m
+  [31mremotes/origin/fix/order-lambda[m
+  [31mremotes/origin/fix/product-lambda[m
+  [31mremotes/origin/main[m
