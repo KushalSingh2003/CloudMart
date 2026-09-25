@@ -50,6 +50,10 @@ Parameters:
     Type: String
     Description: >
       Authorized public IP in CIDR notation for SSH access to EC2. Example: 203.0.113.10/32
+  ApplicationPort:
+    Type: Number
+    Default: 80
+    Description: TCP port exposed by the Flask application on EC2.
 
 Resources:
 
