@@ -160,54 +160,9 @@ Resources:
       Tags:
       - Key: Name
         Value: !Sub cloudmart-${Environment}-product-lambda-role
-
-  # ==========================================================
-  # CHECK STOCK LAMBDA IAM ROLE
-  # ==========================================================
-
-  CustomersLambdaRole:
-    Type: AWS::IAM::Role
-
-    Properties:
-      RoleName: !Sub cloudmart-${Environment}-customer-lambda-role
-
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-        - Effect: Allow
-          Principal:
-            Service:
-            - lambda.amazonaws.com
-          Action:
-          - sts:AssumeRole
-
-      ManagedPolicyArns:
-      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
-
-      Policies:
-
-      - PolicyName: ReadDBCredentials
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-          - Effect: Allow
-            Action:
-            - ssm:GetParameter
-            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db-*
-
-      - PolicyName: PublishEvents
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-          - Effect: Allow
-            Action:
-            - events:PutEvents
-            Resource: !GetAtt CloudMartEventBus.Arn
-
-      Tags:
-      - Key: Name
-        Value: !Sub cloudmart-${Environment}-customer-lambda-role
+    # ==========================================================
+    # CHECK STOCK LAMBDA IAM ROLE
+    # ==========================================================
     # ==========================================================
     # REPORT LAMBDA IAM ROLE
     # ==========================================================
@@ -393,43 +348,7 @@ Resources:
   # CHECK STOCK LAMBDA
   # ==========================================================
 
-  CustomersLambda:
-    Type: AWS::Lambda::Function
 
-    Properties:
-      FunctionName: !Sub cloudmart-${Environment}-customer-lambda
-
-      Runtime: python3.12
-
-      Handler: lambda_function.lambda_handler
-
-      Role: !GetAtt CustomerLambdaRole.Arn
-
-      Timeout: 30
-
-      MemorySize: 256
-      VpcConfig:
-        SubnetIds:
-        - Fn::ImportValue:
-            Fn::Sub: cloudmart-${Environment}-PrivateSubnetAId
-        - Fn::ImportValue:
-            Fn::Sub: cloudmart-${Environment}-PrivateSubnetBId
-
-        SecurityGroupIds:
-        - Fn::ImportValue:
-            Fn::Sub: cloudmart-${Environment}-LambdaSecurityGroupId
-      Environment:
-        Variables:
-          DB_HOST_PARAMETER: !Sub /cloudmart/${Environment}/db-endpoint
-          DB_PORT_PARAMETER: !Sub /cloudmart/${Environment}/db-port
-          DB_NAME_PARAMETER: !Sub /cloudmart/${Environment}/db-name
-          DB_USER_PARAMETER: !Sub /cloudmart/${Environment}/db-username
-          DB_PASSWORD_PARAMETER: !Sub /cloudmart/${Environment}/db-password
-       
-
-      Code:
-        S3Bucket: !Ref LambdaCodeBucket
-        S3Key: !Sub lambdas/customer-${GitHubRunId}.zip
 
   # ==========================================================
   # REPORT LAMBDA
@@ -607,9 +526,7 @@ Resources:
     - OrdersDeleteMethod
     - OrderPatchMethod
     - OrderPutMethod
-    - CustomersGetMethod
-    - CustomersPostMethod
-    - CustomersPatchMethod
+
     Properties:
       RestApiId: !Ref CloudMartApi
       StageName: !Ref Environment
@@ -623,74 +540,6 @@ Resources:
       RestApiId: !Ref CloudMartApi
       ParentId: !GetAtt CloudMartApi.RootResourceId
       PathPart: orders
-  CustomersResource:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-     RestApiId:!Ref CloudMartApi
-     ParentId: !GetAtt CloudMartApi.RootResourceId
-     PathPart: customers
-  CustomersIdResource:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref CloudMartApi
-      ParentId: !Ref CustomersResource
-      PathPart: "{userId}"
-  CustomersGetMethod:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      RestApiId: !Ref CloudMartApi
-      ResourceId: !Ref CustomersResource
-      HttpMethod: GET
-
-      AuthorizationType: CUSTOM
-      AuthorizerId: !Ref CloudMartAuthorizer
-
-      Integration:
-        Type: AWS_PROXY
-        IntegrationHttpMethod: POST
-        Uri: !Sub
-          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CustomerLambdaArn}/invocations
-          - CustomersLambdaArn: !GetAtt CustomerLambda.Arn
-  CustomersPostMethod:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      RestApiId: !Ref CloudMartApi
-      ResourceId: !Ref CustomersResource
-      HttpMethod: POST
-      AuthorizationType: NONE
-      Integration:
-        Type: AWS_PROXY
-        IntegrationHttpMethod: POST
-        Uri: !Sub
-          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CustomersLambdaArn}/invocations
-          - CustomersLambdaArn: !GetAtt CustomersLambda.Arn
-  CustomersPatchMethod:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      RestApiId: !Ref CloudMartApi
-      ResourceId: !Ref CustomersIdResource
-      HttpMethod: PATCH
-
-      AuthorizationType: CUSTOM
-      AuthorizerId: !Ref CloudMartAuthorizer
-
-      Integration:
-        Type: AWS_PROXY
-        IntegrationHttpMethod: POST
-        Uri: !Sub
-          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CustomersLambdaArn}/invocations
-          - CustomersLambdaArn: !GetAtt CustomersLambda.Arn
-  CustomersLambdaPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref CustomersLambda
-      Action: lambda:InvokeFunction
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${CloudMartApi}/*/*/customers*
-
-
-    
-
 
   OrdersGetMethod:
     Type: AWS::ApiGateway::Method
@@ -1293,12 +1142,6 @@ Outputs:
     Value: !Ref OrderLambda
     Export:
       Name: !Sub cloudmart-${Environment}-OrderLambdaName
-
-  CheckStockLambdaName:
-    Description: Check Stock Lambda function name
-    Value: !Ref CheckStockLambda
-    Export:
-      Name: !Sub cloudmart-${Environment}-CheckStockLambdaName
 
   AuthorizerLambdaName:
     Description: Authorizer Lambda function name
