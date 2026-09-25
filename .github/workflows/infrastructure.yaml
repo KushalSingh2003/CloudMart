@@ -101,18 +101,7 @@ jobs:
 
         cd build/report
         zip -r ../../report.zip .
-    - name: Package stock Lambda
-      run: |
-        mkdir -p build/stock_change
 
-        pip install \
-          -r lambdas/stock_change/requirements.txt \
-          -t build/stock
-
-        cp lambdas/stock_change/lambda_function.py build/stock/
-
-        cd build/stock
-        zip -r ../../stock_change.zip .
     - name: Package auth Lambda
       run: |
         mkdir -p build/authorizer
@@ -131,7 +120,7 @@ jobs:
         aws s3 cp order.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/order-${GITHUB_RUN_ID}.zip
         aws s3 cp product.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/product-${GITHUB_RUN_ID}.zip
         aws s3 cp report.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/report-${GITHUB_RUN_ID}.zip
-        aws s3 cp customer.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/customer-${GITHUB_RUN_ID}.zip
+
         aws s3 cp authorizer.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/authorizer-${GITHUB_RUN_ID}.zip
     - name: Package Dashboard
       run: |
