@@ -27,11 +27,6 @@ Parameters:
     Default: 50
     Description: Maximum number of items allowed in an order
 
-  MaxItemQuantity:
-    Type: Number
-    Default: 100
-    Description: Maximum quantity allowed for a single product
-
 # ============================================================
 # RESOURCES
 # ============================================================
@@ -347,7 +342,6 @@ Resources:
 
           EVENT_BUS_NAME: !Ref CloudMartEventBus
           MAX_ORDER_ITEMS: !Ref MaxOrderItems
-          MAX_ITEM_QUANTITY: !Ref MaxItemQuantity
 
   # ==========================================================
   # PRODUCT LAMBDA
