@@ -5252,7 +5252,6 @@ DB_PASSWORD_PARAMETER = os.environ["DB_PASSWORD_PARAMETER"]
 
 EVENT_BUS_NAME = os.environ["EVENT_BUS_NAME"]
 MAX_ORDER_ITEMS = int(os.environ["MAX_ORDER_ITEMS"])
-MAX_ITEM_QUANTITY = int(os.environ["MAX_ITEM_QUANTITY"])
 
 
 # ------------------------------------------------------------
@@ -5658,27 +5657,18 @@ def lambda_handler(event, context):
                         isinstance(quantity, bool)
                         or not isinstance(quantity, int)
                         or quantity <= 0
-                        or quantity > MAX_ITEM_QUANTITY
+                        
                     ):
                         connection.rollback()
                         return response(
                             400,
                             {
-                                "message": f"Quantity must be a positive integer between 1 and {MAX_ITEM_QUANTITY}"
+                                "message": f"Quantity must be a positive integer"
                             }
                         )
 
                     if product_id in combined_items:
                         combined_items[product_id] += quantity
-
-                        if combined_items[product_id] > MAX_ITEM_QUANTITY:
-                            connection.rollback()
-                            return response(
-                                400,
-                                {
-                                    "message": f"Total quantity for ProductID {product_id} cannot exceed {MAX_ITEM_QUANTITY}"
-                                }
-                            )
                     else:
                         combined_items[product_id] = quantity
 
@@ -5694,7 +5684,8 @@ def lambda_handler(event, context):
                             product_id,
                             name,
                             price,
-                            stock
+                            stock,
+                            max_order_quantity 
                         FROM Products
                         WHERE product_id = %s
                           AND status = 'ACTIVE'
@@ -5724,6 +5715,29 @@ def lambda_handler(event, context):
                                 "ProductID": product_id
                             }
                         )
+                    if quantity > product["max_order_quantity"]:
+                        connection.rollback()
+                        publish_event(
+                            "OrderFailed",
+                            {
+                                "customer_id": user_id,
+                                "product_id": product_id,
+                                "requested_quantity": quantity,
+                                "max_order_quantity": product["max_order_quantity"],
+                                "reason": "Maximum order quantity exceeded"
+                            }
+                        )
+                        publish_metric("OrdersFailed")
+
+                        return response(
+                            400,
+                            {
+                                "message": "Requested quantity exceeds the maximum allowed quantity for this product",
+                                "ProductID": product_id,
+                                "RequestedQuantity": quantity,
+                                "MaxOrderQuantity": product["max_order_quantity"]
+                            }
+                        )
 
                     if product["stock"] < quantity:
                         connection.rollback()
@@ -5741,9 +5755,8 @@ def lambda_handler(event, context):
                         return response(
                             400,
                             {
-                                "message": "Insufficient stock",
-                                "ProductID": product_id,
-                                "AvailableStock": product["stock"]
+                                "message": "Order Failed",
+                                
                             }
                         )
 
