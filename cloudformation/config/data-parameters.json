@@ -1,8 +1,5 @@
 [
-  {
-    "ParameterKey": "Environment",
-    "ParameterValue": "dev"
-  },
+  
   {
     "ParameterKey": "DBInstanceClass",
     "ParameterValue": "db.t3.micro"
