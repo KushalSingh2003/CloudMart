@@ -6135,6 +6135,10 @@ def lambda_handler(event, context):
                 if "Status" in body:
 
                     status = body["Status"]
+                    print(
+                        f"ORDER STATUS DEBUG: order_id={order_id}, "
+                        f"old_status={old_status}, new_status={status}"
+                    )
 
                     if status not in (
                         "PENDING",
@@ -6278,6 +6282,27 @@ def lambda_handler(event, context):
                                     "ProductID": item["product_id"],
                                     "RequiredQuantity": item["quantity"]
                                 }
+
+                        )
+                    cursor.execute(
+                                """
+                                UPDATE Orders
+                                SET user_id = %s,
+                                    total_amount = %s,
+                                    status = %s,
+                                    is_deleted = %s,
+                                    changed_at = CURRENT_TIMESTAMP,
+                                    cancel_reason = %s
+                                WHERE order_id = %s
+                                """,
+                                (
+                                    user_id,
+                                    total_amount,
+                                    status,
+                                    is_deleted,
+                                    cancel_reason,
+                                    order_id
+                                )
                             )
 
                 else:
