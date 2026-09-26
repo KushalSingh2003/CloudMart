@@ -204,25 +204,25 @@ def get_db_connection():
     ssm = boto3.client("ssm", region_name="ap-south-1")
 
     endpoint = ssm.get_parameter(
-        Name="/cloudmart/{ENVIRONMENT}/db-endpoint"
+        Name=f"/cloudmart/{ENVIRONMENT}/db-endpoint"
     )["Parameter"]["Value"]
 
     port = int(
         ssm.get_parameter(
-            Name="/cloudmart/{ENVIRONMENT}/db-port"
+            Name=f"/cloudmart/{ENVIRONMENT}/db-port"
         )["Parameter"]["Value"]
     )
 
     database = ssm.get_parameter(
-        Name="/cloudmart/{ENVIRONMENT}/db-name"
+        Name=f"/cloudmart/{ENVIRONMENT}/db-name"
     )["Parameter"]["Value"]
 
     username = ssm.get_parameter(
-        Name="/cloudmart/{ENVIRONMENT}/db-username"
+        Name=f"/cloudmart/{ENVIRONMENT}/db-username"
     )["Parameter"]["Value"]
 
     password = ssm.get_parameter(
-        Name="/cloudmart/{ENVIRONMENT}/db-password",
+        Name=f"/cloudmart/{ENVIRONMENT}/db-password",
         WithDecryption=True
     )["Parameter"]["Value"]
 
