@@ -24,6 +24,12 @@ CREATE TABLE IF NOT EXISTS Customers (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     
 );
+INSERT INTO Customers (name, email, phone, Role, token) VALUES
+('Rahul Sharma', 'rahul@example.com', '9876543210', 'customer', 'customer-token-001'),
+('Priya Singh', 'priya@example.com', '9876543211', 'customer', 'customer-token-002'),
+('Amit Kumar', 'amit@example.com', '9876543212', 'customer', 'customer-token-003'),
+('Neha Verma', 'neha@example.com', '9876543213', 'customer', 'customer-token-004'),
+('Admin User', 'admin@example.com', '9876543214', 'Admin', 'admin-token-001');
 CREATE TABLE IF NOT EXISTS Products (
     product_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,

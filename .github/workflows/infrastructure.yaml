@@ -21,28 +21,28 @@ permissions:
   contents: read
 
 jobs:
-  network:
-    name: Deploy Network Stacks second attempt
-    uses: ./.github/workflows/deploy-stack.yaml
-    with:
-      stack_name: network-stack-CloudMart
-      template_file: cloudformation/network-stack.yaml
-      parameters_file: cloudformation/config/network-parameters.json
-      tags_file: cloudformation/config/tags.json
-      environment: ${{ vars.DEPLOY_ENV }}
-    secrets: inherit
+  # network:
+  #   name: Deploy Network Stacks second attempt
+  #   uses: ./.github/workflows/deploy-stack.yaml
+  #   with:
+  #     stack_name: network-stack-CloudMart
+  #     template_file: cloudformation/network-stack.yaml
+  #     parameters_file: cloudformation/config/network-parameters.json
+  #     tags_file: cloudformation/config/tags.json
+  #     environment: ${{ vars.DEPLOY_ENV }}
+  #   secrets: inherit
 
-  data:
-    name: Deploy Data Stack
-    needs: network
+  # data:
+  #   name: Deploy Data Stack
+  #   needs: network
 
-    uses: ./.github/workflows/deploy-stack.yaml
-    with:
-      stack_name: data-stack-CloudMart
-      template_file: cloudformation/data-stack.yaml
-      tags_file: cloudformation/config/tags.json
-      environment: ${{ vars.DEPLOY_ENV }}
-    secrets: inherit
+  #   uses: ./.github/workflows/deploy-stack.yaml
+  #   with:
+  #     stack_name: data-stack-CloudMart
+  #     template_file: cloudformation/data-stack.yaml
+  #     tags_file: cloudformation/config/tags.json
+  #     environment: ${{ vars.DEPLOY_ENV }}
+  #   secrets: inherit
 
   package-lambdas:
     name: Package Lambda Functions seventh  attempt
@@ -116,6 +116,19 @@ jobs:
 
         cd build/authorizer
         zip -r ../../authorizer.zip .
+    - name: Package dbInit Lambda
+      run: |
+        mkdir -p build/db_init
+
+        pip install \
+          -r lambdas/db_init/requirements.txt \
+          -t build/db_init
+
+        cp lambdas/db_init/lambda_function.py build/db_init/
+        cp lambdas/db_init/schema.sql build/db_init/
+
+        cd build/db_init
+        zip -r ../../db_init.zip .
 
     - name: Upload Lambda packages to S3
       run: |
@@ -124,6 +137,7 @@ jobs:
         aws s3 cp report.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/report-${GITHUB_RUN_ID}.zip
 
         aws s3 cp authorizer.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/authorizer-${GITHUB_RUN_ID}.zip
+        aws s3 cp db_init.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/dbInit-${GITHUB_RUN_ID}.zip
     - name: Package Dashboard
       run: |
         cd dashboard

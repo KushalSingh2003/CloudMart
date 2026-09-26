@@ -43,9 +43,43 @@ Resources:
     Properties:
       Name: !Sub cloudmart-${Environment}-event-bus
 
-  # ==========================================================
-  # ORDER LAMBDA IAM ROLE
-  # ==========================================================
+    # ==========================================================
+    # ORDER LAMBDA IAM ROLE
+    # ==========================================================
+    DBInitLambdaRole:
+      Type: AWS::IAM::Role
+
+      Properties:
+        RoleName: !Sub cloudmart-${Environment}-dbInit-lambda-role
+
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - lambda.amazonaws.com
+            Action:
+            - sts:AssumeRole
+
+        ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+
+        Policies:
+
+        - PolicyName: ReadDBCredentials
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+              - ssm:GetParameter
+              Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db-*
+
+        Tags:
+        - Key: Name
+          Value: !Sub cloudmart-${Environment}-dbInit-lambda-role
 
   OrderLambdaRole:
     Type: AWS::IAM::Role
@@ -254,10 +288,45 @@ Resources:
       Tags:
       - Key: Name
         Value: !Sub cloudmart-${Environment}-report-lambda-role
+    # ==========================================================
+    # ORDER LAMBDA
+    # ==========================================================
+  DBInitLambda:
+    Type: AWS::Lambda::Function
 
-  # ==========================================================
-  # ORDER LAMBDA
-  # ==========================================================
+    Properties:
+      FunctionName: !Sub cloudmart-${Environment}-dbInit-lambda
+
+      Runtime: python3.12
+
+      Handler: lambda_function.lambda_handler
+
+      Role: !GetAtt DBInitLambdaRole.Arn
+
+      Timeout: 30
+
+      MemorySize: 256
+
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: !Sub lambdas/dbInit-${GitHubRunId}.zip
+      VpcConfig:
+        SubnetIds:
+        - Fn::ImportValue:
+            Fn::Sub: cloudmart-${Environment}-PrivateSubnetAId
+        - Fn::ImportValue:
+            Fn::Sub: cloudmart-${Environment}-PrivateSubnetBId
+
+        SecurityGroupIds:
+        - Fn::ImportValue:
+            Fn::Sub: cloudmart-${Environment}-LambdaSecurityGroupId
+      Environment:
+        Variables:
+          DB_HOST_PARAMETER: !Sub /cloudmart/${Environment}/db-endpoint
+          DB_PORT_PARAMETER: !Sub /cloudmart/${Environment}/db-port
+          DB_NAME_PARAMETER: !Sub /cloudmart/${Environment}/db-name
+          DB_USER_PARAMETER: !Sub /cloudmart/${Environment}/db-username
+          DB_PASSWORD_PARAMETER: !Sub /cloudmart/${Environment}/db-password
 
   OrderLambda:
     Type: AWS::Lambda::Function
@@ -496,6 +565,7 @@ Resources:
         - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AuthorizerArn}/invocations
         - AuthorizerArn: !GetAtt LambdaAuthorizer.Arn
       IdentitySource: method.request.header.Authorization
+      AuthorizerResultTtlInSeconds: 0
 
   # ==========================================================
   # API GATEWAY
