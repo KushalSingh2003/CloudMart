@@ -297,6 +297,11 @@ Resources:
         FromPort: 443
         ToPort: 443
         SourceSecurityGroupId: !Ref LambdaSecurityGroup
+      - Description: HHTPS from Cloudmart EC2
+        IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        SourceSecurityGroupId: !Ref EC2SecurityGroup
 
       SecurityGroupEgress:
       - Description: Endpoint outbound traffic.
