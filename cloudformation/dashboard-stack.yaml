@@ -759,6 +759,7 @@ Resources:
 
             # Store CloudMart configuration
             cat > /etc/cloudmart-dashboard.env <<EOF
+            ENVIRONMENT=${Environment}
             FLASK_SECRET_KEY=${FlaskSecretKey}
             REPORTS_BUCKET_NAME=${ReportsBucketName}
             EOF

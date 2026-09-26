@@ -189,6 +189,7 @@ from zoneinfo import ZoneInfo
 app = Flask(__name__)
 REPORTS_BUCKET = os.environ["REPORTS_BUCKET_NAME"]
 app.secret_key = os.environ["FLASK_SECRET_KEY"]
+ENVIRONMENT = os.environ["ENVIRONMENT"]
 def admin_required(view):
     @wraps(view)
     def wrapped_view(*args, **kwargs):
@@ -203,25 +204,25 @@ def get_db_connection():
     ssm = boto3.client("ssm", region_name="ap-south-1")
 
     endpoint = ssm.get_parameter(
-        Name="/cloudmart/dev/db-endpoint"
+        Name="/cloudmart/{ENVIRONMENT}/db-endpoint"
     )["Parameter"]["Value"]
 
     port = int(
         ssm.get_parameter(
-            Name="/cloudmart/dev/db-port"
+            Name="/cloudmart/{ENVIRONMENT}/db-port"
         )["Parameter"]["Value"]
     )
 
     database = ssm.get_parameter(
-        Name="/cloudmart/dev/db-name"
+        Name="/cloudmart/{ENVIRONMENT}/db-name"
     )["Parameter"]["Value"]
 
     username = ssm.get_parameter(
-        Name="/cloudmart/dev/db-username"
+        Name="/cloudmart/{ENVIRONMENT}/db-username"
     )["Parameter"]["Value"]
 
     password = ssm.get_parameter(
-        Name="/cloudmart/dev/db-password",
+        Name="/cloudmart/{ENVIRONMENT}/db-password",
         WithDecryption=True
     )["Parameter"]["Value"]
 
