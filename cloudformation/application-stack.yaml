@@ -42,44 +42,43 @@ Resources:
 
     Properties:
       Name: !Sub cloudmart-${Environment}-event-bus
-
     # ==========================================================
     # ORDER LAMBDA IAM ROLE
     # ==========================================================
-    DBInitLambdaRole:
-      Type: AWS::IAM::Role
+  DBInitLambdaRole:
+    Type: AWS::IAM::Role
 
-      Properties:
-        RoleName: !Sub cloudmart-${Environment}-dbInit-lambda-role
+    Properties:
+      RoleName: !Sub cloudmart-${Environment}-dbInit-lambda-role
 
-        AssumeRolePolicyDocument:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+
+      Policies:
+
+      - PolicyName: ReadDBCredentials
+        PolicyDocument:
           Version: '2012-10-17'
           Statement:
           - Effect: Allow
-            Principal:
-              Service:
-              - lambda.amazonaws.com
             Action:
-            - sts:AssumeRole
+            - ssm:GetParameter
+            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db-*
 
-        ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
-
-        Policies:
-
-        - PolicyName: ReadDBCredentials
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-            - Effect: Allow
-              Action:
-              - ssm:GetParameter
-              Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db-*
-
-        Tags:
-        - Key: Name
-          Value: !Sub cloudmart-${Environment}-dbInit-lambda-role
+      Tags:
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-dbInit-lambda-role
 
   OrderLambdaRole:
     Type: AWS::IAM::Role
