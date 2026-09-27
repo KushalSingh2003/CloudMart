@@ -228,7 +228,6 @@ Resources:
       Name: !Sub cloudmart-${Environment}-daily-report
 
       Description: Trigger Daily Report Lambda every day
-      EventBusName: !Ref CloudMartEventBus
 
       ScheduleExpression: cron(30 3 * * ? *)
 
