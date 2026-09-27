@@ -266,9 +266,11 @@ if [ -n "${PARAMETERS_FILE}" ]; then
 
     jq \
       --arg runid "$GITHUB_RUN_ID" \
-      '. + [
-        {"ParameterKey":"GitHubRunId","ParameterValue":$runid}
-      ]' \
+      --arg environment "$ENVIRONMENT" \
+      'map(select(.ParameterKey != "Environment")) + [
+    {"ParameterKey":"Environment","ParameterValue":$environment},
+    {"ParameterKey":"GitHubRunId","ParameterValue":$runid}
+  ]' \
       "$PARAMETERS_FILE" > "$PARAMETERS_WITH_AUTH"
 
     if [ "${TEMPLATE_FILE}" = "cloudformation/dashboard-stack.yaml" ]; then

@@ -874,6 +874,7 @@
 # adding a another comment
 #just another comment to check for dashboard stack
 # just another comment
+# just another comment
 import os
 import json
 from decimal import Decimal, InvalidOperation
@@ -891,6 +892,7 @@ DB_PORT_PARAMETER = os.environ["DB_PORT_PARAMETER"]
 DB_NAME_PARAMETER = os.environ["DB_NAME_PARAMETER"]
 DB_USER_PARAMETER = os.environ["DB_USER_PARAMETER"]
 DB_PASSWORD_PARAMETER = os.environ["DB_PASSWORD_PARAMETER"]
+EVENT_BUS_NAME = os.environ["EVENT_BUS_NAME"]
 
 
 ssm = boto3.client("ssm")
@@ -948,59 +950,59 @@ def publish_metric(metric_name):
 # Initialize database using schema.sql
 # ------------------------------------------------------------
 
-def initialize_database(connection):
+# def initialize_database(connection):
 
-    print(json.dumps({
-        "level": "INFO",
-        "message": "Starting database initialization"
-    }))
+#     print(json.dumps({
+#         "level": "INFO",
+#         "message": "Starting database initialization"
+#     }))
 
-    try:
+#     try:
 
-        with open("/var/task/schema.sql", "r") as file:
-            sql_script = file.read()
+#         with open("/var/task/schema.sql", "r") as file:
+#             sql_script = file.read()
 
-        print(json.dumps({
-            "level": "INFO",
-            "message": "schema.sql loaded successfully"
-        }))
+#         print(json.dumps({
+#             "level": "INFO",
+#             "message": "schema.sql loaded successfully"
+#         }))
 
-        statements = sql_script.split(";")
+#         statements = sql_script.split(";")
 
-        executed_statements = 0
+#         executed_statements = 0
 
-        with connection.cursor() as cursor:
+#         with connection.cursor() as cursor:
 
-            for statement in statements:
+#             for statement in statements:
 
-                statement = statement.strip()
+#                 statement = statement.strip()
 
-                if not statement:
-                    continue
+#                 if not statement:
+#                     continue
 
-                cursor.execute(statement)
+#                 cursor.execute(statement)
 
-                executed_statements += 1
+#                 executed_statements += 1
 
-        connection.commit()
+#         connection.commit()
 
-        print(json.dumps({
-            "level": "INFO",
-            "message": "Database initialization completed",
-            "statements_executed": executed_statements
-        }))
+#         print(json.dumps({
+#             "level": "INFO",
+#             "message": "Database initialization completed",
+#             "statements_executed": executed_statements
+#         }))
 
-    except Exception as e:
+#     except Exception as e:
 
-        connection.rollback()
+#         connection.rollback()
 
-        print(json.dumps({
-            "level": "ERROR",
-            "message": "Database initialization failed",
-            "error": str(e)
-        }))
+#         print(json.dumps({
+#             "level": "ERROR",
+#             "message": "Database initialization failed",
+#             "error": str(e)
+#         }))
 
-        raise
+#         raise
 
 
 # ------------------------------------------------------------
@@ -1329,7 +1331,7 @@ def lambda_handler(event, context):
         # Initialize database
         # ----------------------------------------------------
 
-        initialize_database(connection)
+        # initialize_database(connection)
 
 
         # ----------------------------------------------------

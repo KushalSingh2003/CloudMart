@@ -42,10 +42,43 @@ Resources:
 
     Properties:
       Name: !Sub cloudmart-${Environment}-event-bus
+    # ==========================================================
+    # ORDER LAMBDA IAM ROLE
+    # ==========================================================
+  DBInitLambdaRole:
+    Type: AWS::IAM::Role
 
-  # ==========================================================
-  # ORDER LAMBDA IAM ROLE
-  # ==========================================================
+    Properties:
+      RoleName: !Sub cloudmart-${Environment}-dbInit-lambda-role
+
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+
+      Policies:
+
+      - PolicyName: ReadDBCredentials
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - ssm:GetParameter
+            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db-*
+
+      Tags:
+      - Key: Name
+        Value: !Sub cloudmart-${Environment}-dbInit-lambda-role
 
   OrderLambdaRole:
     Type: AWS::IAM::Role
@@ -160,53 +193,9 @@ Resources:
       Tags:
       - Key: Name
         Value: !Sub cloudmart-${Environment}-product-lambda-role
-
-  # ==========================================================
-  # CHECK STOCK LAMBDA IAM ROLE
-  # ==========================================================
-
-  CheckStockLambdaRole:
-    Type: AWS::IAM::Role
-
-    Properties:
-      RoleName: !Sub cloudmart-${Environment}-check-stock-lambda-role
-
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-        - Effect: Allow
-          Principal:
-            Service:
-            - lambda.amazonaws.com
-          Action:
-          - sts:AssumeRole
-
-      ManagedPolicyArns:
-      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-
-      Policies:
-
-      - PolicyName: ReadDBCredentials
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-          - Effect: Allow
-            Action:
-            - ssm:GetParameter
-            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cloudmart/${Environment}/db/*
-
-      - PolicyName: PublishEvents
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-          - Effect: Allow
-            Action:
-            - events:PutEvents
-            Resource: !GetAtt CloudMartEventBus.Arn
-
-      Tags:
-      - Key: Name
-        Value: !Sub cloudmart-${Environment}-check-stock-lambda-role
+    # ==========================================================
+    # CHECK STOCK LAMBDA IAM ROLE
+    # ==========================================================
     # ==========================================================
     # REPORT LAMBDA IAM ROLE
     # ==========================================================
@@ -298,10 +287,45 @@ Resources:
       Tags:
       - Key: Name
         Value: !Sub cloudmart-${Environment}-report-lambda-role
+    # ==========================================================
+    # ORDER LAMBDA
+    # ==========================================================
+  DBInitLambda:
+    Type: AWS::Lambda::Function
 
-  # ==========================================================
-  # ORDER LAMBDA
-  # ==========================================================
+    Properties:
+      FunctionName: !Sub cloudmart-${Environment}-dbInit-lambda
+
+      Runtime: python3.12
+
+      Handler: lambda_function.lambda_handler
+
+      Role: !GetAtt DBInitLambdaRole.Arn
+
+      Timeout: 30
+
+      MemorySize: 256
+
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: !Sub lambdas/dbInit-${GitHubRunId}.zip
+      VpcConfig:
+        SubnetIds:
+        - Fn::ImportValue:
+            Fn::Sub: cloudmart-${Environment}-PrivateSubnetAId
+        - Fn::ImportValue:
+            Fn::Sub: cloudmart-${Environment}-PrivateSubnetBId
+
+        SecurityGroupIds:
+        - Fn::ImportValue:
+            Fn::Sub: cloudmart-${Environment}-LambdaSecurityGroupId
+      Environment:
+        Variables:
+          DB_HOST_PARAMETER: !Sub /cloudmart/${Environment}/db-endpoint
+          DB_PORT_PARAMETER: !Sub /cloudmart/${Environment}/db-port
+          DB_NAME_PARAMETER: !Sub /cloudmart/${Environment}/db-name
+          DB_USER_PARAMETER: !Sub /cloudmart/${Environment}/db-username
+          DB_PASSWORD_PARAMETER: !Sub /cloudmart/${Environment}/db-password
 
   OrderLambda:
     Type: AWS::Lambda::Function
@@ -392,25 +416,7 @@ Resources:
   # CHECK STOCK LAMBDA
   # ==========================================================
 
-  CheckStockLambda:
-    Type: AWS::Lambda::Function
 
-    Properties:
-      FunctionName: !Sub cloudmart-${Environment}-check-stock-lambda
-
-      Runtime: python3.12
-
-      Handler: lambda_function.lambda_handler
-
-      Role: !GetAtt CheckStockLambdaRole.Arn
-
-      Timeout: 30
-
-      MemorySize: 256
-
-      Code:
-        S3Bucket: !Ref LambdaCodeBucket
-        S3Key: !Sub lambdas/stock_change-${GitHubRunId}.zip
 
   # ==========================================================
   # REPORT LAMBDA
@@ -558,6 +564,7 @@ Resources:
         - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AuthorizerArn}/invocations
         - AuthorizerArn: !GetAtt LambdaAuthorizer.Arn
       IdentitySource: method.request.header.Authorization
+      AuthorizerResultTtlInSeconds: 0
 
   # ==========================================================
   # API GATEWAY
@@ -588,6 +595,7 @@ Resources:
     - OrdersDeleteMethod
     - OrderPatchMethod
     - OrderPutMethod
+
     Properties:
       RestApiId: !Ref CloudMartApi
       StageName: !Ref Environment
@@ -1203,12 +1211,6 @@ Outputs:
     Value: !Ref OrderLambda
     Export:
       Name: !Sub cloudmart-${Environment}-OrderLambdaName
-
-  CheckStockLambdaName:
-    Description: Check Stock Lambda function name
-    Value: !Ref CheckStockLambda
-    Export:
-      Name: !Sub cloudmart-${Environment}-CheckStockLambdaName
 
   AuthorizerLambdaName:
     Description: Authorizer Lambda function name

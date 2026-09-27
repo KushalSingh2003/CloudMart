@@ -22,29 +22,31 @@ permissions:
 
 jobs:
   # network:
-  #   name: Deploy Network Stacks first attempt
+  #   name: Deploy Network Stacks second attempt
   #   uses: ./.github/workflows/deploy-stack.yaml
   #   with:
   #     stack_name: network-stack-CloudMart
   #     template_file: cloudformation/network-stack.yaml
   #     parameters_file: cloudformation/config/network-parameters.json
   #     tags_file: cloudformation/config/tags.json
-  #     environment: dev
+  #     environment: ${{ vars.DEPLOY_ENV }}
   #   secrets: inherit
 
   # data:
-  # name: Deploy Data Stack
+  #   name: Deploy Data Stack
+  #   needs: network
 
-  # uses: ./.github/workflows/deploy-stack.yaml
-  # with:
-  #   stack_name: data-stack-CloudMart
-  #   template_file: cloudformation/data-stack.yaml
-  #   tags_file: cloudformation/config/tags.json
-  #   environment: dev
-  # secrets: inherit
+  #   uses: ./.github/workflows/deploy-stack.yaml
+  #   with:
+  #     stack_name: data-stack-CloudMart
+  #     template_file: cloudformation/data-stack.yaml
+  #     tags_file: cloudformation/config/tags.json
+  #     environment: ${{ vars.DEPLOY_ENV }}
+  #   secrets: inherit
 
   package-lambdas:
     name: Package Lambda Functions seventh  attempt
+
     runs-on: ubuntu-latest
 
     steps:
@@ -84,7 +86,7 @@ jobs:
           -t build/product
 
         cp lambdas/product/lambda_function.py build/product/
-        cp lambdas/product/schema.sql build/product/
+
 
         cd build/product
         zip -r ../../product.zip .
@@ -101,18 +103,7 @@ jobs:
 
         cd build/report
         zip -r ../../report.zip .
-    - name: Package stock Lambda
-      run: |
-        mkdir -p build/stock_change
 
-        pip install \
-          -r lambdas/stock_change/requirements.txt \
-          -t build/stock
-
-        cp lambdas/stock_change/lambda_function.py build/stock/
-
-        cd build/stock
-        zip -r ../../stock_change.zip .
     - name: Package auth Lambda
       run: |
         mkdir -p build/authorizer
@@ -125,14 +116,28 @@ jobs:
 
         cd build/authorizer
         zip -r ../../authorizer.zip .
+    - name: Package dbInit Lambda
+      run: |
+        mkdir -p build/db_init
+
+        pip install \
+          -r lambdas/db_init/requirements.txt \
+          -t build/db_init
+
+        cp lambdas/db_init/lambda_function.py build/db_init/
+        cp lambdas/db_init/schema.sql build/db_init/
+
+        cd build/db_init
+        zip -r ../../db_init.zip .
 
     - name: Upload Lambda packages to S3
       run: |
         aws s3 cp order.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/order-${GITHUB_RUN_ID}.zip
         aws s3 cp product.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/product-${GITHUB_RUN_ID}.zip
         aws s3 cp report.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/report-${GITHUB_RUN_ID}.zip
-        aws s3 cp stock_change.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/stock_change-${GITHUB_RUN_ID}.zip
+
         aws s3 cp authorizer.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/authorizer-${GITHUB_RUN_ID}.zip
+        aws s3 cp db_init.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/dbInit-${GITHUB_RUN_ID}.zip
     - name: Package Dashboard
       run: |
         cd dashboard
@@ -152,7 +157,7 @@ jobs:
       template_file: cloudformation/application-stack.yaml
       parameters_file: cloudformation/config/application-parameters.json
       tags_file: cloudformation/config/tags.json
-      environment: dev
+      environment: ${{ vars.DEPLOY_ENV }}
     secrets: inherit
   monitoring:
     name: Deploy Monitoring  Stack check yes
@@ -164,7 +169,7 @@ jobs:
       template_file: cloudformation/dashboard-stack.yaml
       parameters_file: cloudformation/config/monitoring-parameters.json
       tags_file: cloudformation/config/tags.json
-      environment: dev
+      environment: ${{ vars.DEPLOY_ENV }}
 
     secrets: inherit
   # dashboard-update:

@@ -50,7 +50,6 @@ Parameters:
     Type: String
     Description: >
       Authorized public IP in CIDR notation for SSH access to EC2. Example: 203.0.113.10/32
-
   ApplicationPort:
     Type: Number
     Default: 80
@@ -298,6 +297,11 @@ Resources:
         FromPort: 443
         ToPort: 443
         SourceSecurityGroupId: !Ref LambdaSecurityGroup
+      - Description: HHTPS from Cloudmart EC2
+        IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        SourceSecurityGroupId: !Ref EC2SecurityGroup
 
       SecurityGroupEgress:
       - Description: Endpoint outbound traffic.
