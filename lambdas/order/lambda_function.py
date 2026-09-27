@@ -6812,6 +6812,7 @@ def lambda_handler(event, context):
 # ------------------------------------------------------------
 # API response
 # ------------------------------------------------------------
+# another comment
 
 def response(status_code, body):
 
