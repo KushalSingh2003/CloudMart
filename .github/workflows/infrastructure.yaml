@@ -196,7 +196,7 @@ jobs:
         echo "Database initialization completed successfully"
   monitoring:
     name: Deploy Monitoring  Stack check yes
-    needs: application
+    needs: db-init
 
     uses: ./.github/workflows/deploy-stack.yaml
     with:
