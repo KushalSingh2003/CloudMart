@@ -194,7 +194,7 @@ Important test cases:
 
 ## Deployment
 
-Refer to [`DEPLOYMENT_RUNBOOK.md`](./DEPLOYMENT_RUNBOOK.md) for the complete deployment and validation procedure.
+Refer to [`cloudmart-deployment-runbook.md`](./Documents/cloudmart-deployment-runbook.md) for the complete deployment and validation procedure.
 
 ## Security
 
@@ -211,26 +211,22 @@ The project uses:
 
 ## Project Structure
 
+## Project Structure
+
 ```text
 CloudMart/
-├── lambdas/
-│   ├── db-init/
-│   ├── product/
-│   ├── order/
-│   ├── check-stock/
-│   ├── report/
-│   └── authorizer/
-├── cloudformation/
-│   ├── network/
-│   ├── data/
-│   ├── application/
-│   └── dashboard/
-├── dashboard/
 ├── .github/
 │   └── workflows/
+├── .vscode/
+├── Documents/
+│   ├── CloudMart_Documents.pdf
+│   ├── cloudmart-deployment-runbook.md
+│   └── last_architecture.png
+├── cloudformation/
+├── dashboard/
+├── lambdas/
 ├── README.md
-└── DEPLOYMENT_RUNBOOK.md
-```
+└── ...
 
 ## Deployment Status
 
