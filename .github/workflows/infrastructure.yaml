@@ -32,20 +32,18 @@ jobs:
   #     environment: ${{ vars.DEPLOY_ENV }}
   #   secrets: inherit
 
-  data:
-    name: Deploy Data Stack
-
-    uses: ./.github/workflows/deploy-stack.yaml
-    with:
-      stack_name: data-stack-CloudMart
-      template_file: cloudformation/data-stack.yaml
-      tags_file: cloudformation/config/tags.json
-      environment: ${{ vars.DEPLOY_ENV }}
-    secrets: inherit
+  # data:
+  #   name: Deploy Data Stack
+  #   uses: ./.github/workflows/deploy-stack.yaml
+  #   with:
+  #     stack_name: data-stack-CloudMart
+  #     template_file: cloudformation/data-stack.yaml
+  #     tags_file: cloudformation/config/tags.json
+  #     environment: ${{ vars.DEPLOY_ENV }}
+  #   secrets: inherit
 
   package-lambdas:
     name: Package Lambda Functions seventh  attempt
-    needs: data
 
     runs-on: ubuntu-latest
 
@@ -159,43 +157,43 @@ jobs:
       tags_file: cloudformation/config/tags.json
       environment: ${{ vars.DEPLOY_ENV }}
     secrets: inherit
-  db-init:
-    name: Initialize Database
-    needs: application
-    runs-on: ubuntu-latest
+  # db-init:
+  #   name: Initialize Database
+  #   needs: application
+  #   runs-on: ubuntu-latest
 
-    steps:
-    - name: Configure AWS credentials via OIDC
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-        aws-region: ${{ vars.AWS_REGION }}
+  #   steps:
+  #   - name: Configure AWS credentials via OIDC
+  #     uses: aws-actions/configure-aws-credentials@v4
+  #     with:
+  #       role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+  #       aws-region: ${{ vars.AWS_REGION }}
 
-    - name: Run DB Init Lambda
-      run: |
-        FUNCTION_NAME="cloudmart-${{ vars.DEPLOY_ENV }}-dbInit-lambda"
+  #   - name: Run DB Init Lambda
+  #     run: |
+  #       FUNCTION_NAME="cloudmart-${{ vars.DEPLOY_ENV }}-dbInit-lambda"
 
-        echo "Invoking DB Init Lambda: $FUNCTION_NAME"
+  #       echo "Invoking DB Init Lambda: $FUNCTION_NAME"
 
-        aws lambda invoke \
-          --function-name "$FUNCTION_NAME" \
-          --invocation-type RequestResponse \
-          --payload '{}' \
-          response.json
+  #       aws lambda invoke \
+  #         --function-name "$FUNCTION_NAME" \
+  #         --invocation-type RequestResponse \
+  #         --payload '{}' \
+  #         response.json
 
-        cat response.json
+  #       cat response.json
 
-    - name: Check DB Init Result
-      run: |
-        if grep -q '"statusCode": 500' response.json; then
-          echo "Database initialization failed"
-          exit 1
-        fi
+  #   - name: Check DB Init Result
+  #     run: |
+  #       if grep -q '"statusCode": 500' response.json; then
+  #         echo "Database initialization failed"
+  #         exit 1
+  #       fi
 
-        echo "Database initialization completed successfully"
+  #       echo "Database initialization completed successfully"
   monitoring:
     name: Deploy Monitoring  Stack check yes
-    needs: db-init
+    needs: application
 
     uses: ./.github/workflows/deploy-stack.yaml
     with:
