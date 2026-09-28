@@ -231,33 +231,32 @@ Outputs:
     Value: !Ref CloudMartDatabase
     Export:
       Name: !Sub cloudmart-${Environment}-rds-instance-id
+  # DBEndpoint:
+  #   Description: CloudMart RDS MySQL endpoint.
+  #   Value: !GetAtt CloudMartDatabase.Endpoint.Address
+  #   Export:
+  #     Name: !Sub cloudmart-${Environment}-rds-endpoint
 
-  DBEndpoint:
-    Description: CloudMart RDS MySQL endpoint.
-    Value: !GetAtt CloudMartDatabase.Endpoint.Address
-    Export:
-      Name: !Sub cloudmart-${Environment}-rds-endpoint
+  # DBPort:
+  #   Description: CloudMart RDS MySQL port.
+  #   Value: !GetAtt CloudMartDatabase.Endpoint.Port
+  #   Export:
+  #     Name: !Sub cloudmart-${Environment}-rds-port
 
-  DBPort:
-    Description: CloudMart RDS MySQL port.
-    Value: !GetAtt CloudMartDatabase.Endpoint.Port
-    Export:
-      Name: !Sub cloudmart-${Environment}-rds-port
+  # DatabaseName:
+  #   Description: CloudMart database name.
+  #   Value: !Ref DatabaseName
+  #   Export:
+  #     Name: !Sub cloudmart-${Environment}-database-name
 
-  DatabaseName:
-    Description: CloudMart database name.
-    Value: !Ref DatabaseName
-    Export:
-      Name: !Sub cloudmart-${Environment}-database-name
+  # DBMasterUsername:
+  #   Description: CloudMart RDS master username.
+  #   Value: !Ref MasterUsername
+  #   Export:
+  #     Name: !Sub cloudmart-${Environment}-db-master-username
 
-  DBMasterUsername:
-    Description: CloudMart RDS master username.
-    Value: !Ref MasterUsername
-    Export:
-      Name: !Sub cloudmart-${Environment}-db-master-username
-
-  DBSubnetGroupName:
-    Description: CloudMart RDS DB subnet group.
-    Value: !Ref CloudMartDBSubnetGroup
-    Export:
-      Name: !Sub cloudmart-${Environment}-db-subnet-group
+  # DBSubnetGroupName:
+  #   Description: CloudMart RDS DB subnet group.
+  #   Value: !Ref CloudMartDBSubnetGroup
+  #   Export:
+  #     Name: !Sub cloudmart-${Environment}-db-subnet-group
