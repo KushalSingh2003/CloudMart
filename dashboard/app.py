@@ -359,6 +359,33 @@ def dashboard():
                 GROUP BY status
             """)
             order_status = cursor.fetchall()
+            # Revenue trend
+            cursor.execute("""
+                SELECT
+                    DATE(created_at) AS order_date,
+                    COALESCE(SUM(total_amount), 0) AS revenue
+                FROM Orders
+                WHERE is_deleted = 0
+                AND LOWER(status) != 'cancelled'
+                GROUP BY DATE(created_at)
+                ORDER BY order_date ASC
+            """)
+            revenue_trend = cursor.fetchall()
+
+
+            
+            # Orders trend
+            cursor.execute("""
+                SELECT
+                    DATE(created_at) AS order_date,
+                    COUNT(*) AS total_orders
+                FROM Orders
+                WHERE is_deleted = 0
+                AND LOWER(status) != 'cancelled'
+                GROUP BY DATE(created_at)
+                ORDER BY order_date ASC
+            """)
+            orders_trend = cursor.fetchall()
 
             cursor.execute("""
                 SELECT
@@ -400,6 +427,8 @@ def dashboard():
             order_status=order_status,
             best_selling=best_selling,
             low_stock=low_stock,
+            revenue_trend=revenue_trend,
+            orders_trend=orders_trend,
             today=today
         )
 

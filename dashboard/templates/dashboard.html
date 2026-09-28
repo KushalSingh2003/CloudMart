@@ -9,6 +9,7 @@
 
     <link rel="stylesheet"
           href="{{ url_for('static', filename='css/dashboard.css') }}">
+          <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 </head>
 
@@ -97,522 +98,357 @@
         </header>
 
 
-        <!-- Statistics -->
-        <section class="stats-grid">
+<!-- Dashboard Overview -->
+<section class="stats-grid">
+
+    <!-- Products -->
+    <div class="stat-card">
+        <div class="stat-icon">◈</div>
+        <div class="stat-content">
+            <span>Total Products</span>
+            <h2>{{ total_products }}</h2>
+        </div>
+    </div>
+
+    <!-- Customers -->
+    <div class="stat-card">
+        <div class="stat-icon">♙</div>
+        <div class="stat-content">
+            <span>Total Customers</span>
+            <h2>{{ total_customers }}</h2>
+        </div>
+    </div>
+
+    <!-- Orders -->
+    <div class="stat-card">
+        <div class="stat-icon">◫</div>
+        <div class="stat-content">
+            <span>Total Orders</span>
+            <h2>{{ total_orders }}</h2>
+        </div>
+    </div>
+
+    <!-- Revenue -->
+    <div class="stat-card">
+        <div class="stat-icon">₹</div>
+        <div class="stat-content">
+            <span>Total Revenue</span>
+            <h2>₹{{ "%.2f"|format(total_sales|float) }}</h2>
+        </div>
+    </div>
+
+</section>
 
 
-            <!-- Total Products -->
-            <div class="stat-card">
+<!-- Revenue & Orders -->
+<section class="analytics-grid">
 
-                <div class="stat-icon">
-                    ◈
-                </div>
+    <!-- Revenue Trend -->
+    <div class="card chart-card revenue-chart">
 
-                <div class="stat-content">
-
-                    <span>
-                        Total Products
-                    </span>
-
-                    <h2>
-                        {{ total_products }}
-                    </h2>
-
-                </div>
-
+        <div class="card-header">
+            <div>
+                <h3>Revenue Trend</h3>
+                <p>Sales performance over time</p>
             </div>
 
+            <span class="chart-badge">Revenue</span>
+        </div>
 
-            <!-- Total Customers -->
-            <div class="stat-card">
+        <div class="chart-container">
+            <canvas id="revenueChart"></canvas>
+        </div>
 
-                <div class="stat-icon">
-                    ♙
-                </div>
+    </div>
 
-                <div class="stat-content">
 
-                    <span>
-                        Total Customers
-                    </span>
+    <!-- Orders Trend -->
+    <div class="card chart-card orders-chart">
 
-                    <h2>
-                        {{ total_customers }}
-                    </h2>
-
-                </div>
-
+        <div class="card-header">
+            <div>
+                <h3>Orders Trend</h3>
+                <p>Orders received over time</p>
             </div>
 
+            <span class="chart-badge">Orders</span>
+        </div>
 
-            <!-- Total Orders -->
-            <div class="stat-card">
+        <div class="chart-container">
+            <canvas id="ordersChart"></canvas>
+        </div>
 
-                <div class="stat-icon">
-                    ◫
-                </div>
+    </div>
 
-                <div class="stat-content">
+</section>
 
-                    <span>
-                        Total Orders
-                    </span>
 
-                    <h2>
-                        {{ total_orders }}
-                    </h2>
+<!-- Distribution -->
+<section class="analytics-grid secondary-grid">
 
-                </div>
+    <!-- Order Status -->
+    <div class="card chart-card">
 
+        <div class="card-header">
+            <div>
+                <h3>Order Status</h3>
+                <p>Current order distribution</p>
             </div>
+        </div>
+
+        <div class="donut-container">
+            <canvas id="orderStatusChart"></canvas>
+        </div>
+
+    </div>
 
 
-            <!-- Total Sales -->
-            <div class="stat-card">
+    <!-- Best Selling -->
+    <div class="card chart-card">
 
-                <div class="stat-icon">
-                    ₹
-                </div>
-
-                <div class="stat-content">
-
-                    <span>
-                        Total Sales
-                    </span>
-
-                    <h2>
-                        ₹{{ "%.2f"|format(total_sales|float) }}
-                    </h2>
-
-                </div>
-
+        <div class="card-header">
+            <div>
+                <h3>Best-Selling Products</h3>
+                <p>Top products by quantity sold</p>
             </div>
+        </div>
 
-        </section>
+        <div class="chart-container">
+            <canvas id="bestSellingChart"></canvas>
+        </div>
 
+    </div>
 
-        <!-- Main Grid -->
-        <section class="dashboard-grid">
+</section>
 
 
-            <!-- Recent Orders -->
-            <div class="card large-card">
-
-                <div class="card-header">
-
-                    <div>
-
-                        <h3>
-                            Recent Orders
-                        </h3>
-
-                        <p>
-                            Latest activity from your customers
-                        </p>
-
-                    </div>
-
-                    <span class="card-count">
-                        {{ recent_orders|length }}
-                    </span>
-
-                </div>
-
-
-                {% if recent_orders %}
-
-                <div class="table-wrapper">
-
-                    <table>
-
-                        <thead>
-
-                            <tr>
-
-                                <th>
-                                    Order
-                                </th>
-
-                                <th>
-                                    Customer
-                                </th>
-
-                                <th>
-                                    Amount
-                                </th>
-
-                                <th>
-                                    Status
-                                </th>
-
-                                <th>
-                                    Date
-                                </th>
-
-                            </tr>
-
-                        </thead>
-
-
-                        <tbody>
-
-                        {% for order in recent_orders %}
-
-                            <tr>
-
-                                <!-- Order -->
-                                <td>
-
-                                    <strong>
-                                        #{{ order.order_id }}
-                                    </strong>
-
-                                </td>
-
-
-                                <!-- Customer -->
-                                <td>
-
-                                    {{ order.customer_name or "Unknown" }}
-
-                                </td>
-
-
-                                <!-- Amount -->
-                                <td>
-
-                                    ₹{{ "%.2f"|format(order.total_amount|float) }}
-
-                                </td>
-
-
-                                <!-- Status -->
-                                <td>
-
-                                    <span class="status
-
-                                        {% if order.status|lower == 'completed' %}
-                                            status-success
-
-                                        {% elif order.status|lower == 'cancelled' %}
-                                            status-danger
-
-                                        {% elif order.status|lower == 'pending' %}
-                                            status-warning
-
-                                        {% else %}
-                                            status-neutral
-
-                                        {% endif %}
-
-                                    ">
-
-                                        {{ order.status }}
-
-                                    </span>
-
-                                </td>
-
-
-                                <!-- Date -->
-                                <td>
-
-                                    {{ order.created_at.strftime('%d %b %Y')
-                                       if order.created_at else '-' }}
-
-                                </td>
-
-                            </tr>
-
-                        {% endfor %}
-
-                        </tbody>
-
-                    </table>
-
-                </div>
-
-
-                {% else %}
-
-                <div class="empty-state">
-
-                    <div class="empty-icon">
-                        ◫
-                    </div>
-
-                    <h4>
-                        No orders yet
-                    </h4>
-
-                    <p>
-                        Orders will appear here once customers start purchasing.
-                    </p>
-
-                </div>
-
-                {% endif %}
-
-            </div>
-
-
-            <!-- Order Status -->
-            <div class="card">
-
-                <div class="card-header">
-
-                    <div>
-
-                        <h3>
-                            Order Status
-                        </h3>
-
-                        <p>
-                            Current order distribution
-                        </p>
-
-                    </div>
-
-                </div>
-
-
-                {% if order_status %}
-
-                <div class="status-list">
-
-                    {% for status in order_status %}
-
-                    <div class="status-row">
-
-                        <div class="status-name">
-
-                            <span class="status-dot-small"></span>
-
-                            <span>
-                                {{ status.status }}
-                            </span>
-
-                        </div>
-
-                        <strong>
-                            {{ status.total }}
-                        </strong>
-
-                    </div>
-
-                    {% endfor %}
-
-                </div>
-
-
-                {% else %}
-
-                <div class="empty-state compact">
-
-                    <p>
-                        No order status data available.
-                    </p>
-
-                </div>
-
-                {% endif %}
-
-            </div>
-
-
-            <!-- Best Selling Products -->
-            <div class="card">
-
-                <div class="card-header">
-
-                    <div>
-
-                        <h3>
-                            Best-Selling Products
-                        </h3>
-
-                        <p>
-                            Top products by quantity sold
-                        </p>
-
-                    </div>
-
-                </div>
-
-
-                {% if best_selling %}
-
-                <div class="product-list">
-
-                    {% for product in best_selling %}
-
-                    <div class="product-row">
-
-                        <div class="product-rank">
-                            {{ loop.index }}
-                        </div>
-
-
-                        <div class="product-info">
-
-                            <strong>
-                                {{ product.product_name }}
-                            </strong>
-
-                            <span>
-                                Product ID: {{ product.product_id }}
-                            </span>
-
-                        </div>
-
-
-                        <div class="product-quantity">
-
-                            {{ product.total_quantity }}
-
-                            <small>
-                                sold
-                            </small>
-
-                        </div>
-
-                    </div>
-
-                    {% endfor %}
-
-                </div>
-
-
-                {% else %}
-
-                <div class="empty-state compact">
-
-                    <p>
-                        No sales data available.
-                    </p>
-
-                </div>
-
-                {% endif %}
-
-            </div>
-
-
-            <!-- Low Stock -->
-            <div class="card">
-
-                <div class="card-header">
-
-                    <div>
-
-                        <h3>
-                            Low Stock
-                        </h3>
-
-                        <p>
-                            Products that need attention
-                        </p>
-
-                    </div>
-
-
-                    {% if low_stock %}
-
-                    <span class="alert-count">
-                        {{ low_stock|length }}
-                    </span>
-
-                    {% endif %}
-
-                </div>
-
-
-                {% if low_stock %}
-
-                <div class="stock-list">
-
-                    {% for product in low_stock %}
-
-                    <div class="stock-row">
-
-                        <div>
-
-                            <strong>
-                                {{ product.name }}
-                            </strong>
-
-                            <span>
-                                Product #{{ product.product_id }}
-                            </span>
-
-                        </div>
-
-
-                        <div class="stock-value
-
-                            {% if product.stock == 0 %}
-                                stock-critical
-                            {% else %}
-                                stock-warning
-                            {% endif %}
-
-                        ">
-
-                            {{ product.stock }}
-
-                            <small>
-                                left
-                            </small>
-
-                        </div>
-
-                    </div>
-
-                    {% endfor %}
-
-                </div>
-
-
-                {% else %}
-
-                <div class="healthy-stock">
-
-                    <div class="healthy-icon">
-                        ✓
-                    </div>
-
-                    <div>
-
-                        <strong>
-                            Stock looks good
-                        </strong>
-
-                        <p>
-                            No products are currently low on stock.
-                        </p>
-
-                    </div>
-
-                </div>
-
-                {% endif %}
-
-            </div>
-            <!-- Reports -->
-<div class="card report-card">
+<!-- Inventory -->
+<section class="card inventory-card">
 
     <div class="card-header">
 
         <div>
+            <h3>Inventory Health</h3>
+            <p>Products currently requiring attention</p>
+        </div>
 
-            <h3>
-                Reports
-            </h3>
+        {% if low_stock %}
+            <span class="alert-count">
+                {{ low_stock|length }} alerts
+            </span>
+        {% else %}
+            <span class="healthy-badge">
+                Healthy
+            </span>
+        {% endif %}
 
-            <p>
-                Download the daily sales report
-            </p>
+    </div>
 
+
+    <div class="inventory-list">
+
+        {% if low_stock %}
+
+            {% for product in low_stock %}
+
+            <div class="inventory-item">
+
+                <div class="inventory-info">
+
+                    <strong>
+                        {{ product.name }}
+                    </strong>
+
+                    <span>
+                        Product #{{ product.product_id }}
+                    </span>
+
+                </div>
+
+                <div class="inventory-bar-wrapper">
+
+                    <div class="inventory-bar">
+                        <div
+                            class="inventory-bar-fill
+                            {% if product.stock == 0 %}
+                                critical
+                            {% else %}
+                                warning
+                            {% endif %}"
+                            style="width: {{ [product.stock * 20, 100]|min }}%;">
+                        </div>
+                    </div>
+
+                </div>
+
+                <div
+                    class="inventory-value
+                    {% if product.stock == 0 %}
+                        critical
+                    {% else %}
+                        warning
+                    {% endif %}"
+                >
+                    {{ product.stock }}
+                    <small>left</small>
+                </div>
+
+            </div>
+
+            {% endfor %}
+
+        {% else %}
+
+            <div class="inventory-healthy">
+
+                <div class="healthy-icon">✓</div>
+
+                <div>
+                    <strong>Inventory looks healthy</strong>
+                    <p>No products are currently low on stock.</p>
+                </div>
+
+            </div>
+
+        {% endif %}
+
+    </div>
+
+</section>
+
+
+<!-- Recent Orders -->
+<section class="card recent-orders-card">
+
+    <div class="card-header">
+
+        <div>
+            <h3>Recent Orders</h3>
+            <p>Latest activity from your customers</p>
+        </div>
+
+        <span class="card-count">
+            {{ recent_orders|length }}
+        </span>
+
+    </div>
+
+
+    {% if recent_orders %}
+
+    <div class="table-wrapper">
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>Order</th>
+                    <th>Customer</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for order in recent_orders %}
+
+                <tr>
+
+                    <td>
+                        <strong>#{{ order.order_id }}</strong>
+                    </td>
+
+                    <td>
+                        {{ order.customer_name or "Unknown" }}
+                    </td>
+
+                    <td>
+                        ₹{{ "%.2f"|format(order.total_amount|float) }}
+                    </td>
+
+                    <td>
+
+                        <span class="status
+                            {% if order.status|lower == 'completed' %}
+                                status-success
+                            {% elif order.status|lower == 'cancelled' %}
+                                status-danger
+                            {% elif order.status|lower == 'pending' %}
+                                status-warning
+                            {% else %}
+                                status-neutral
+                            {% endif %}
+                        ">
+                            {{ order.status }}
+                        </span>
+
+                    </td>
+
+                    <td>
+                        {{ order.created_at.strftime('%d %b %Y')
+                           if order.created_at else '-' }}
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+    {% else %}
+
+    <div class="empty-state">
+
+        <div class="empty-icon">◫</div>
+
+        <h4>No orders yet</h4>
+
+        <p>
+            Orders will appear here once customers start purchasing.
+        </p>
+
+    </div>
+
+    {% endif %}
+
+</section>
+
+
+<!-- 3D CloudMart Visualization -->
+<section class="card cloud-visual-card">
+
+    <div class="card-header">
+
+        <div>
+            <h3>CloudMart Infrastructure</h3>
+            <p>Interactive cloud commerce visualization</p>
+        </div>
+
+        <span class="chart-badge">
+            3D
+        </span>
+
+    </div>
+
+    <div id="cloudmart3D" class="cloudmart-3d"></div>
+
+</section>
+
+
+<!-- Reports -->
+<section class="card report-card">
+
+    <div class="card-header">
+
+        <div>
+            <h3>Reports</h3>
+            <p>Download the daily sales report</p>
         </div>
 
     </div>
@@ -641,9 +477,7 @@
 
     </form>
 
-</div>
-
-        </section>
+</section>
 
 
         <!-- Footer -->
@@ -689,6 +523,13 @@ document.getElementById("reportForm").addEventListener("submit", async function(
         alert("Unable to download the report.");
     }
 });
+</script>
+<script>
+    const revenueTrend = {{ revenue_trend | tojson }};
+    const ordersTrend = {{ orders_trend | tojson }};
+    const orderStatus = {{ order_status | tojson }};
+    const bestSelling = {{ best_selling | tojson }};
+    const lowStock = {{ low_stock | tojson }};
 </script>
 
 </body>
