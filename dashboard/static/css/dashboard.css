@@ -1537,3 +1537,229 @@ footer {
 .report-button span {
     font-size: 16px;
 }
+/* =========================================================
+   CLOUDMART DARK PURPLE THEME
+   ========================================================= */
+
+body {
+    background: #14132b;
+    color: #ffffff;
+}
+
+.main-content {
+    background:
+        radial-gradient(
+            circle at 80% 0%,
+            rgba(91, 44, 255, 0.16),
+            transparent 35%
+        ),
+        #14132b;
+}
+
+
+/* =========================
+   Sidebar
+   ========================= */
+
+.sidebar {
+    background: #0f0e22;
+    border-right: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.brand h2 {
+    color: #ffffff;
+}
+
+.brand span {
+    color: #8f8cae;
+}
+
+.nav-item {
+    color: #aaa7c4;
+}
+
+.nav-item:hover {
+    background: rgba(91, 44, 255, 0.12);
+    color: #ffffff;
+}
+
+.nav-item.active {
+    background: #5b2cff;
+    color: #ffffff;
+    box-shadow: 0 6px 20px rgba(91, 44, 255, 0.25);
+}
+
+.sidebar-footer {
+    border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-footer span {
+    color: #aaa7c4;
+}
+
+.sidebar-footer small {
+    color: #716e8d;
+}
+
+
+/* =========================
+   Header
+   ========================= */
+
+.topbar h1 {
+    color: #ffffff;
+}
+
+.topbar p {
+    color: #9693b1;
+}
+
+.environment {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: #aaa7c4;
+}
+
+
+/* =========================
+   KPI Cards
+   ========================= */
+
+.stat-card {
+    background: #1d1a3b;
+    border-color: rgba(255, 255, 255, 0.07);
+
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.18);
+}
+
+.stat-card:hover {
+    box-shadow:
+        0 14px 35px rgba(91, 44, 255, 0.16);
+}
+
+.stat-icon {
+    background: rgba(91, 44, 255, 0.16);
+    color: #8c6cff;
+}
+
+.stat-content span {
+    color: #9693b1;
+}
+
+.stat-content h2 {
+    color: #ffffff;
+}
+
+
+/* =========================
+   All Cards
+   ========================= */
+
+.card {
+    background: #1d1a3b;
+    border-color: rgba(255, 255, 255, 0.07);
+
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.16);
+}
+
+.card-header h3 {
+    color: #ffffff;
+}
+
+.card-header p {
+    color: #85829f;
+}
+
+
+/* =========================
+   Chart Badges
+   ========================= */
+
+.chart-badge {
+    background: rgba(91, 44, 255, 0.16);
+    color: #9b83ff;
+}
+
+
+/* =========================
+   Tables
+   ========================= */
+
+thead {
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+th {
+    color: #777493;
+}
+
+td {
+    border-bottom-color: rgba(255, 255, 255, 0.06);
+    color: #aaa7c4;
+}
+
+td strong {
+    color: #ffffff;
+}
+
+
+/* =========================
+   Inventory
+   ========================= */
+
+.inventory-card {
+    background: #1d1a3b;
+}
+
+.inventory-item {
+    background: rgba(255, 255, 255, 0.035);
+}
+
+.inventory-name {
+    color: #ffffff;
+}
+
+.inventory-stock {
+    color: #9b98b5;
+}
+
+
+/* =========================
+   Recent Orders
+   ========================= */
+
+.recent-orders-card {
+    background: #1d1a3b;
+}
+
+
+/* =========================
+   3D Section
+   ========================= */
+
+.cloud-visual-card {
+    background: #1d1a3b;
+}
+
+.cloudmart-3d {
+    background:
+        radial-gradient(
+            circle at 50% 45%,
+            #2d2857 0%,
+            #1c1938 55%,
+            #14132b 100%
+        );
+
+    border: 1px solid rgba(139, 108, 255, 0.15);
+}
+
+
+/* =========================
+   Footer
+   ========================= */
+
+footer {
+    color: #716e8d;
+}

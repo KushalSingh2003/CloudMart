@@ -26,22 +26,23 @@ document.addEventListener("DOMContentLoaded", function () {
                 labels: revenueData.map(item => item.order_date),
 
                 datasets: [{
-                    label: "Revenue",
+    label: "Revenue",
 
-                    data: revenueData.map(item =>
-                        Number(item.revenue)
-                    ),
+    data: revenueData.map(item =>
+        Number(item.revenue)
+    ),
 
-                    borderColor: "#252a34",
-                    backgroundColor: "rgba(37, 42, 52, 0.08)",
+    borderColor: "#8C6CFF",
+    backgroundColor: "rgba(91, 44, 255, 0.12)",
 
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.35,
+    borderWidth: 2,
 
-                    pointRadius: 3,
-                    pointHoverRadius: 5
-                }]
+    fill: true,
+    tension: 0.35,
+
+    pointRadius: 2,
+    pointHoverRadius: 5
+}]
             },
 
             options: {
@@ -122,17 +123,18 @@ document.addEventListener("DOMContentLoaded", function () {
                 ),
 
                 datasets: [{
-                    label: "Orders",
+    label: "Orders",
+    data: ordersData.map(item =>
+        Number(item.total_orders)
+    ),
+    backgroundColor: "#22B8E8",
+    borderRadius: 5,
+    borderSkipped: false,
 
-                    data: ordersData.map(item =>
-                        Number(item.total_orders)
-                    ),
-
-                    backgroundColor: "#d9dde3",
-
-                    borderRadius: 6,
-                    borderSkipped: false
-                }]
+    barPercentage: 0.45,
+    categoryPercentage: 0.55,
+    maxBarThickness: 28
+}]
             },
 
             options: {
@@ -197,12 +199,12 @@ document.addEventListener("DOMContentLoaded", function () {
                     ),
 
                     backgroundColor: [
-                        "#252a34",
-                        "#8c939d",
-                        "#c7a66a",
-                        "#b86f6f",
-                        "#bfc4cb"
-                    ],
+    "#5B2CFF",
+    "#22B8E8",
+    "#FF9F1C",
+    "#FF6B8A",
+    "#8582A8"
+],
 
                     borderWidth: 0,
                     hoverOffset: 5
@@ -253,17 +255,18 @@ document.addEventListener("DOMContentLoaded", function () {
                 ),
 
                 datasets: [{
-                    label: "Units Sold",
+    label: "Units Sold",
+    data: productsData.map(item =>
+        Number(item.total_quantity)
+    ),
+    backgroundColor: "#5B2CFF",
+    borderRadius: 5,
+    borderSkipped: false,
 
-                    data: productsData.map(item =>
-                        Number(item.total_quantity)
-                    ),
-
-                    backgroundColor: "#252a34",
-
-                    borderRadius: 6,
-                    borderSkipped: false
-                }]
+    barPercentage: 0.45,
+    categoryPercentage: 0.55,
+    maxBarThickness: 28
+}]
             },
 
             options: {

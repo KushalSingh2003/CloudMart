@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const scene = new THREE.Scene();
 
-    scene.background = new THREE.Color(0xf1f3f6);
+    scene.background = new THREE.Color(0x171633);
 
 
     // =====================================================
@@ -27,7 +27,7 @@ document.addEventListener("DOMContentLoaded", function () {
         1000
     );
 
-    camera.position.set(0, 5, 15);
+    camera.position.set(0, 0, 20);
 
 
     // =====================================================
@@ -82,8 +82,104 @@ document.addEventListener("DOMContentLoaded", function () {
     // =====================================================
 
     const architecture = new THREE.Group();
+    architecture.scale.set(
+    0.72,
+    0.72,
+    0.72
+);
+
+architecture.position.set(
+    0,
+    0.4,
+    0
+);
 
     scene.add(architecture);
+    createTitle("CloudMart");
+    // =====================================================
+// 3D LABEL CREATOR
+// =====================================================
+function createLabel(text, x, y, z) {
+
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+
+    canvas.width = 512;
+    canvas.height = 128;
+
+    // Label background
+    context.fillStyle = "rgba(23, 22, 51, 0.92)";
+    context.beginPath();
+    context.roundRect(10, 20, 492, 88, 18);
+    context.fill();
+
+    // Label text
+    context.fillStyle = "#ffffff";
+    context.font = "bold 32px Arial";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(text, 256, 64);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+
+    const material = new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+        depthTest: false
+    });
+
+    const sprite = new THREE.Sprite(material);
+
+    sprite.position.set(x, y, z);
+
+    // Size of label
+    sprite.scale.set(2.6, 0.65, 1);
+
+    architecture.add(sprite);
+
+    return sprite;
+}
+function createTitle(text) {
+
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+
+    canvas.width = 700;
+    canvas.height = 150;
+
+    context.clearRect(0, 0, canvas.width, canvas.height);
+
+    context.fillStyle = "#ffffff";
+    context.font = "bold 52px Arial";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+
+    context.fillText(
+        text,
+        canvas.width / 2,
+        canvas.height / 2
+    );
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+
+    const material = new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+        depthTest: false
+    });
+
+    const title = new THREE.Sprite(material);
+
+    title.position.set(0, 4.6, 0);
+
+    title.scale.set(4.8, 1.05, 1);
+
+    architecture.add(title);
+
+    return title;
+}
 
 
     // =====================================================
@@ -107,7 +203,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const material =
             new THREE.MeshStandardMaterial({
-                color: 0x252a34,
+                color: 0x5b2cff,
                 roughness: 0.35,
                 metalness: 0.25
             });
@@ -139,7 +235,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const ringMaterial =
             new THREE.MeshBasicMaterial({
-                color: 0x9aa0aa
+                color: 0x22b8e8
             });
 
         const ring =
@@ -158,6 +254,12 @@ document.addEventListener("DOMContentLoaded", function () {
         );
 
         architecture.add(ring);
+        createLabel(
+    name,
+    x,
+    y + size + 0.55,
+    z
+);
 
 
         return cube;
@@ -168,13 +270,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // CLOUDMART CORE
     // =====================================================
 
-    createNode(
-        "CloudMart",
-        0,
-        0,
-        0,
-        1.2
-    );
+    
 
 
     // =====================================================
