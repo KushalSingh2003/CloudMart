@@ -10,6 +10,7 @@
     <link rel="stylesheet"
           href="{{ url_for('static', filename='css/dashboard.css') }}">
           <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+          <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 
 </head>
 
@@ -442,36 +443,56 @@
 
 
 <!-- Reports -->
-<section class="card report-card">
+<!-- Reports -->
+<section class="report-card">
 
-    <div class="card-header">
+    <div class="report-content">
 
-        <div>
-            <h3>Reports</h3>
-            <p>Download the daily sales report</p>
+        <div class="report-icon">
+            ↓
+        </div>
+
+        <div class="report-info">
+
+            <span class="report-label">
+                REPORTS
+            </span>
+
+            <h3>
+                Download Sales Report
+            </h3>
+
+            <p>
+                Select a date to download the daily CloudMart sales report.
+            </p>
+
         </div>
 
     </div>
 
-    <form
-        id="reportForm"
-        class="report-form"
-    >
 
-        <label for="reportDate">
-            Report Date
-        </label>
+    <form id="reportForm" class="report-form">
 
-        <input
-            type="date"
-            id="reportDate"
-            name="date"
-            max="{{ today }}"
-            value="{{ today }}"
-            required
-        >
+        <div class="report-date-group">
 
-        <button type="submit">
+            <label for="reportDate">
+                Report Date
+            </label>
+
+            <input
+                type="date"
+                id="reportDate"
+                name="date"
+                max="{{ today }}"
+                value="{{ today }}"
+                required
+            >
+
+        </div>
+
+
+        <button type="submit" class="report-button">
+            <span>↓</span>
             Download Report
         </button>
 
@@ -531,6 +552,8 @@ document.getElementById("reportForm").addEventListener("submit", async function(
     const bestSelling = {{ best_selling | tojson }};
     const lowStock = {{ low_stock | tojson }};
 </script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script src="{{ url_for('static', filename='js/cloudmart-3d.js') }}"></script>
 
 </body>
 

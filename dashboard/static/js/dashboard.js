@@ -1,19 +1,9 @@
 document.addEventListener("DOMContentLoaded", function () {
 
-    /*
-     * Data comes directly from Flask/Jinja.
-     * Flask gets this data from RDS MySQL.
-     */
-
     const revenueData = revenueTrend || [];
     const ordersData = ordersTrend || [];
     const statusData = orderStatus || [];
     const productsData = bestSelling || [];
-
-
-    /* =====================================================
-       COMMON CHART OPTIONS
-       ===================================================== */
 
     Chart.defaults.font.family =
         "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
@@ -21,16 +11,15 @@ document.addEventListener("DOMContentLoaded", function () {
     Chart.defaults.color = "#8a909a";
 
 
-    /* =====================================================
-       REVENUE TREND
-       ===================================================== */
+    // =====================================================
+    // REVENUE TREND
+    // =====================================================
 
     const revenueCanvas = document.getElementById("revenueChart");
 
     if (revenueCanvas && revenueData.length > 0) {
 
         new Chart(revenueCanvas, {
-
             type: "line",
 
             data: {
@@ -47,21 +36,16 @@ document.addEventListener("DOMContentLoaded", function () {
                     backgroundColor: "rgba(37, 42, 52, 0.08)",
 
                     borderWidth: 2,
-
                     fill: true,
-
                     tension: 0.35,
 
                     pointRadius: 3,
-
                     pointHoverRadius: 5
                 }]
             },
 
             options: {
-
                 responsive: true,
-
                 maintainAspectRatio: false,
 
                 interaction: {
@@ -70,7 +54,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 },
 
                 plugins: {
-
                     legend: {
                         display: false
                     },
@@ -90,7 +73,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 },
 
                 scales: {
-
                     x: {
                         grid: {
                             display: false
@@ -102,7 +84,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     },
 
                     y: {
-
                         beginAtZero: true,
 
                         grid: {
@@ -111,6 +92,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                         ticks: {
                             callback: function (value) {
+
                                 return "₹" +
                                     Number(value)
                                         .toLocaleString("en-IN");
@@ -120,30 +102,26 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             }
         });
-
     }
 
 
-    /* =====================================================
-       ORDERS TREND
-       ===================================================== */
+    // =====================================================
+    // ORDERS TREND
+    // =====================================================
 
     const ordersCanvas = document.getElementById("ordersChart");
 
     if (ordersCanvas && ordersData.length > 0) {
 
         new Chart(ordersCanvas, {
-
             type: "bar",
 
             data: {
-
                 labels: ordersData.map(item =>
                     item.order_date
                 ),
 
                 datasets: [{
-
                     label: "Orders",
 
                     data: ordersData.map(item =>
@@ -153,29 +131,23 @@ document.addEventListener("DOMContentLoaded", function () {
                     backgroundColor: "#d9dde3",
 
                     borderRadius: 6,
-
                     borderSkipped: false
                 }]
             },
 
             options: {
-
                 responsive: true,
-
                 maintainAspectRatio: false,
 
                 plugins: {
-
                     legend: {
                         display: false
                     }
-
                 },
 
                 scales: {
 
                     x: {
-
                         grid: {
                             display: false
                         },
@@ -186,7 +158,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     },
 
                     y: {
-
                         beginAtZero: true,
 
                         ticks: {
@@ -200,13 +171,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             }
         });
-
     }
 
 
-    /* =====================================================
-       ORDER STATUS
-       ===================================================== */
+    // =====================================================
+    // ORDER STATUS
+    // =====================================================
 
     const statusCanvas =
         document.getElementById("orderStatusChart");
@@ -214,17 +184,14 @@ document.addEventListener("DOMContentLoaded", function () {
     if (statusCanvas && statusData.length > 0) {
 
         new Chart(statusCanvas, {
-
             type: "doughnut",
 
             data: {
-
                 labels: statusData.map(item =>
                     item.status
                 ),
 
                 datasets: [{
-
                     data: statusData.map(item =>
                         Number(item.total)
                     ),
@@ -238,31 +205,23 @@ document.addEventListener("DOMContentLoaded", function () {
                     ],
 
                     borderWidth: 0,
-
                     hoverOffset: 5
                 }]
             },
 
             options: {
-
                 responsive: true,
-
                 maintainAspectRatio: false,
 
                 cutout: "68%",
 
                 plugins: {
-
                     legend: {
-
                         position: "bottom",
 
                         labels: {
-
                             usePointStyle: true,
-
                             pointStyle: "circle",
-
                             padding: 18,
 
                             font: {
@@ -273,13 +232,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             }
         });
-
     }
 
 
-    /* =====================================================
-       BEST-SELLING PRODUCTS
-       ===================================================== */
+    // =====================================================
+    // BEST-SELLING PRODUCTS
+    // =====================================================
 
     const productsCanvas =
         document.getElementById("bestSellingChart");
@@ -287,17 +245,14 @@ document.addEventListener("DOMContentLoaded", function () {
     if (productsCanvas && productsData.length > 0) {
 
         new Chart(productsCanvas, {
-
             type: "bar",
 
             data: {
-
                 labels: productsData.map(item =>
                     item.product_name
                 ),
 
                 datasets: [{
-
                     label: "Units Sold",
 
                     data: productsData.map(item =>
@@ -307,21 +262,17 @@ document.addEventListener("DOMContentLoaded", function () {
                     backgroundColor: "#252a34",
 
                     borderRadius: 6,
-
                     borderSkipped: false
                 }]
             },
 
             options: {
-
                 indexAxis: "y",
 
                 responsive: true,
-
                 maintainAspectRatio: false,
 
                 plugins: {
-
                     legend: {
                         display: false
                     }
@@ -330,7 +281,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 scales: {
 
                     x: {
-
                         beginAtZero: true,
 
                         ticks: {
@@ -343,7 +293,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     },
 
                     y: {
-
                         grid: {
                             display: false
                         },
@@ -357,15 +306,15 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             }
         });
-
     }
 
 
-    /* =====================================================
-       EMPTY CHART STATES
-       ===================================================== */
+    // =====================================================
+    // EMPTY CHART STATES
+    // =====================================================
 
     if (revenueCanvas && revenueData.length === 0) {
+
         showChartEmptyState(
             revenueCanvas,
             "No revenue data available yet."
@@ -373,6 +322,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (ordersCanvas && ordersData.length === 0) {
+
         showChartEmptyState(
             ordersCanvas,
             "No order data available yet."
@@ -380,6 +330,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (statusCanvas && statusData.length === 0) {
+
         showChartEmptyState(
             statusCanvas,
             "No order status data available."
@@ -387,12 +338,17 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (productsCanvas && productsData.length === 0) {
+
         showChartEmptyState(
             productsCanvas,
             "No product sales data available."
         );
     }
 
+
+    // =====================================================
+    // EMPTY STATE FUNCTION
+    // =====================================================
 
     function showChartEmptyState(canvas, message) {
 
