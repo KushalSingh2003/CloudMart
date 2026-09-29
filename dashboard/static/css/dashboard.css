@@ -172,8 +172,18 @@ svg { flex: none; }
 .chart-visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
 /* Order status: donut + legend */
-.donut-layout { display: flex; align-items: center; gap: 22px; flex: 1; }
-.donut-container { flex: none; width: 176px; height: 176px; }
+.donut-layout {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+}
+
+.donut-container {
+  flex: 0 0 150px;
+  width: 150px;
+  height: 150px;
+}
 .donut-container::before { border-radius: 50%; }
 .donut-center {
   position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
