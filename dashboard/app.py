@@ -403,16 +403,21 @@ def dashboard():
             """)
             best_selling = cursor.fetchall()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT
                     product_id,
                     name,
-                    stock
+                    stock,
+                    price,
+                    status,
+                    min_stock_quantity
                 FROM Products
-                WHERE stock <= 5
+                WHERE stock <= min_stock_quantity
                 ORDER BY stock ASC
-            """)
-            low_stock = cursor.fetchall()
+                """
+            )
+        low_stock = cursor.fetchall()
         today = datetime.now(
             ZoneInfo("Asia/Kolkata")
         ).date().isoformat()
