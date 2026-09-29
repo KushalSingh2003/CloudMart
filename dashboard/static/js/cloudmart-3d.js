@@ -27,7 +27,7 @@ document.addEventListener("DOMContentLoaded", function () {
         1000
     );
 
-    camera.position.set(0, 0, 20);
+    camera.position.set(0, 0, 15);
 
 
     // =====================================================
@@ -83,9 +83,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const architecture = new THREE.Group();
     architecture.scale.set(
-    0.72,
-    0.72,
-    0.72
+    0.85,
+    0.85,
+    0.85
 );
 
 architecture.position.set(
