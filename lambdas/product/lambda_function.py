@@ -1616,7 +1616,7 @@ def lambda_handler(event, context):
                             }
                         ]
                     )
-                    publish_metric("LowStockAlert")
+                    publish_metric("LowStockAlerts")
                 except Exception as e:
                     print(f"Error publishing low stock event: {str(e)}")
                 print(f"Low stock event published for ProductID: {new_product_id}, Stock: {stock}")
@@ -1757,7 +1757,7 @@ def lambda_handler(event, context):
                                             }
                                         ]
                                     )
-                    publish_metric("LowStockAlert")
+                    publish_metric("LowStockAlerts")
                 except Exception as e:
                     print(f"Error publishing low stock event: {str(e)}")
             
@@ -2037,7 +2037,7 @@ def lambda_handler(event, context):
                                 }
                             ]
                         )
-                        publish_metric("LowStockAlert")
+                        publish_metric("LowStockAlerts")
                     except Exception as e:
                         print(f"Error publishing low stock event: {str(e)}")
 
