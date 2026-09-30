@@ -1,210 +1,211 @@
-# name: Deploy CloudMart Infrastructure
+name: Deploy CloudMart Infrastructure
 
-# on:
-#   push:
-#     branches:
-#     - '**'
+on:
+  push:
+    branches:
+    - '**'
 
-#   workflow_dispatch:
-#     inputs:
-#       environment:
-#         description: Target environment
-#         required: true
-#         default: dev
-#         type: choice
-#         options:
-#         - dev
-#         - prod
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        default: dev
+        type: choice
+        options:
+        - dev
+        - prod
 
-# permissions:
-#   id-token: write
-#   contents: read
+permissions:
+  id-token: write
+  contents: read
 
-# jobs:
-  # network:
-  #   name: Deploy Network Stacks second attempt
-  #   uses: ./.github/workflows/deploy-stack.yaml
-  #   with:
-  #     stack_name: network-stack-CloudMart
-  #     template_file: cloudformation/network-stack.yaml
-  #     parameters_file: cloudformation/config/network-parameters.json
-  #     tags_file: cloudformation/config/tags.json
-  #     environment: ${{ vars.DEPLOY_ENV }}
-  #   secrets: inherit
+jobs:
+  network:
+    name: Deploy Network Stacks second attempt
+    uses: ./.github/workflows/deploy-stack.yaml
+    with:
+      stack_name: network-stack-CloudMart
+      template_file: cloudformation/network-stack.yaml
+      parameters_file: cloudformation/config/network-parameters.json
+      tags_file: cloudformation/config/tags.json
+      environment: ${{ vars.DEPLOY_ENV }}
+    secrets: inherit
 
-  # data:
-  #   name: Deploy Data Stack
-  #   needs: network
-  #   uses: ./.github/workflows/deploy-stack.yaml
-  #   with:
-  #     stack_name: data-stack-CloudMart
-  #     template_file: cloudformation/data-stack.yaml
-  #     tags_file: cloudformation/config/tags.json
-  #     environment: ${{ vars.DEPLOY_ENV }}
-  #   secrets: inherit
+  data:
+    name: Deploy Data Stack
+    needs: network
+    uses: ./.github/workflows/deploy-stack.yaml
+    with:
+      stack_name: data-stack-CloudMart
+      template_file: cloudformation/data-stack.yaml
+      tags_file: cloudformation/config/tags.json
+      environment: ${{ vars.DEPLOY_ENV }}
+    secrets: inherit
 
-  # package-lambdas:
-  #   name: Package Lambda Functions seventh  attempt
+  package-lambdas:
+    name: Package Lambda Functions seventh  attempt
+    needs: data
 
-  #   runs-on: ubuntu-latest
+    runs-on: ubuntu-latest
 
-  #   steps:
-  #   - name: Checkout source code
-  #     uses: actions/checkout@v4
+    steps:
+    - name: Checkout source code
+      uses: actions/checkout@v4
 
-  #   - name: Configure AWS credentials via OIDC
-  #     uses: aws-actions/configure-aws-credentials@v4
-  #     with:
-  #       role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-  #       aws-region: ${{ vars.AWS_REGION }}
+    - name: Configure AWS credentials via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+        aws-region: ${{ vars.AWS_REGION }}
 
-  #   - name: Set up Python
-  #     uses: actions/setup-python@v5
-  #     with:
-  #       python-version: '3.12'
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
 
-  #   - name: Package Order Lambda
-  #     run: |
-  #       mkdir -p build/order
+    - name: Package Order Lambda
+      run: |
+        mkdir -p build/order
 
-  #       pip install \
-  #         -r lambdas/order/requirements.txt \
-  #         -t build/order
+        pip install \
+          -r lambdas/order/requirements.txt \
+          -t build/order
 
-  #       cp lambdas/order/lambda_function.py build/order/
+        cp lambdas/order/lambda_function.py build/order/
 
-  #       cd build/order
-  #       zip -r ../../order.zip .
+        cd build/order
+        zip -r ../../order.zip .
 
-  #   - name: Package Product Lambda
-  #     run: |
-  #       mkdir -p build/product
+    - name: Package Product Lambda
+      run: |
+        mkdir -p build/product
 
-  #       pip install \
-  #         -r lambdas/product/requirements.txt \
-  #         -t build/product
+        pip install \
+          -r lambdas/product/requirements.txt \
+          -t build/product
 
-  #       cp lambdas/product/lambda_function.py build/product/
+        cp lambdas/product/lambda_function.py build/product/
 
 
-  #       cd build/product
-  #       zip -r ../../product.zip .
+        cd build/product
+        zip -r ../../product.zip .
 
-  #   - name: Package Report Lambda
-  #     run: |
-  #       mkdir -p build/report
+    - name: Package Report Lambda
+      run: |
+        mkdir -p build/report
 
-  #       pip install \
-  #         -r lambdas/report/requirements.txt \
-  #         -t build/report
+        pip install \
+          -r lambdas/report/requirements.txt \
+          -t build/report
 
-  #       cp lambdas/report/lambda_function.py build/report/
+        cp lambdas/report/lambda_function.py build/report/
 
-  #       cd build/report
-  #       zip -r ../../report.zip .
+        cd build/report
+        zip -r ../../report.zip .
 
-  #   - name: Package auth Lambda
-  #     run: |
-  #       mkdir -p build/authorizer
+    - name: Package auth Lambda
+      run: |
+        mkdir -p build/authorizer
 
-  #       pip install \
-  #         -r lambdas/authorizer/requirements.txt \
-  #         -t build/authorizer
+        pip install \
+          -r lambdas/authorizer/requirements.txt \
+          -t build/authorizer
 
-  #       cp lambdas/authorizer/lambda_function.py build/authorizer/
+        cp lambdas/authorizer/lambda_function.py build/authorizer/
 
-  #       cd build/authorizer
-  #       zip -r ../../authorizer.zip .
-  #   - name: Package dbInit Lambda
-  #     run: |
-  #       mkdir -p build/db_init
+        cd build/authorizer
+        zip -r ../../authorizer.zip .
+    - name: Package dbInit Lambda
+      run: |
+        mkdir -p build/db_init
 
-  #       pip install \
-  #         -r lambdas/db_init/requirements.txt \
-  #         -t build/db_init
+        pip install \
+          -r lambdas/db_init/requirements.txt \
+          -t build/db_init
 
-  #       cp lambdas/db_init/lambda_function.py build/db_init/
-  #       cp lambdas/db_init/schema.sql build/db_init/
+        cp lambdas/db_init/lambda_function.py build/db_init/
+        cp lambdas/db_init/schema.sql build/db_init/
 
-  #       cd build/db_init
-  #       zip -r ../../db_init.zip .
+        cd build/db_init
+        zip -r ../../db_init.zip .
 
-  #   - name: Upload Lambda packages to S3
-  #     run: |
-  #       aws s3 cp order.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/order-${GITHUB_RUN_ID}.zip
-  #       aws s3 cp product.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/product-${GITHUB_RUN_ID}.zip
-  #       aws s3 cp report.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/report-${GITHUB_RUN_ID}.zip
+    - name: Upload Lambda packages to S3
+      run: |
+        aws s3 cp order.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/order-${GITHUB_RUN_ID}.zip
+        aws s3 cp product.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/product-${GITHUB_RUN_ID}.zip
+        aws s3 cp report.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/report-${GITHUB_RUN_ID}.zip
 
-  #       aws s3 cp authorizer.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/authorizer-${GITHUB_RUN_ID}.zip
-  #       aws s3 cp db_init.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/dbInit-${GITHUB_RUN_ID}.zip
-  #   - name: Package Dashboard
-  #     run: |
-  #       cd dashboard
-  #       zip -r ../dashboard.zip .
-  #       cd ..
-  #   - name: Upload Dashboard Package
-  #     run: |
-  #       aws s3 cp dashboard.zip \
-  #        s3://${{ vars.LAMBDA_CODE_BUCKET }}/dashboard/dashboard-${GITHUB_RUN_ID}.zip
-  # application:
-  #   name: Deploy Application Stack
-  #   needs: package-lambdas
+        aws s3 cp authorizer.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/authorizer-${GITHUB_RUN_ID}.zip
+        aws s3 cp db_init.zip s3://${{ vars.LAMBDA_CODE_BUCKET }}/lambdas/dbInit-${GITHUB_RUN_ID}.zip
+    - name: Package Dashboard
+      run: |
+        cd dashboard
+        zip -r ../dashboard.zip .
+        cd ..
+    - name: Upload Dashboard Package
+      run: |
+        aws s3 cp dashboard.zip \
+         s3://${{ vars.LAMBDA_CODE_BUCKET }}/dashboard/dashboard-${GITHUB_RUN_ID}.zip
+  application:
+    name: Deploy Application Stack
+    needs: package-lambdas
 
-  #   uses: ./.github/workflows/deploy-stack.yaml
-  #   with:
-  #     stack_name: application-stack-CloudMart
-  #     template_file: cloudformation/application-stack.yaml
-  #     parameters_file: cloudformation/config/application-parameters.json
-  #     tags_file: cloudformation/config/tags.json
-  #     environment: ${{ vars.DEPLOY_ENV }}
-  #   secrets: inherit
-  # db-init:
-  #   name: Initialize Database
-  #   needs: application
-  #   runs-on: ubuntu-latest
+    uses: ./.github/workflows/deploy-stack.yaml
+    with:
+      stack_name: application-stack-CloudMart
+      template_file: cloudformation/application-stack.yaml
+      parameters_file: cloudformation/config/application-parameters.json
+      tags_file: cloudformation/config/tags.json
+      environment: ${{ vars.DEPLOY_ENV }}
+    secrets: inherit
+  db-init:
+    name: Initialize Database
+    needs: application
+    runs-on: ubuntu-latest
 
-  #   steps:
-  #   - name: Configure AWS credentials via OIDC
-  #     uses: aws-actions/configure-aws-credentials@v4
-  #     with:
-  #       role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-  #       aws-region: ${{ vars.AWS_REGION }}
+    steps:
+    - name: Configure AWS credentials via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+        aws-region: ${{ vars.AWS_REGION }}
 
-  #   - name: Run DB Init Lambda
-  #     run: |
-  #       FUNCTION_NAME="cloudmart-${{ vars.DEPLOY_ENV }}-dbInit-lambda"
+    - name: Run DB Init Lambda
+      run: |
+        FUNCTION_NAME="cloudmart-${{ vars.DEPLOY_ENV }}-dbInit-lambda"
 
-  #       echo "Invoking DB Init Lambda: $FUNCTION_NAME"
+        echo "Invoking DB Init Lambda: $FUNCTION_NAME"
 
-  #       aws lambda invoke \
-  #         --function-name "$FUNCTION_NAME" \
-  #         --invocation-type RequestResponse \
-  #         --payload '{}' \
-  #         response.json
+        aws lambda invoke \
+          --function-name "$FUNCTION_NAME" \
+          --invocation-type RequestResponse \
+          --payload '{}' \
+          response.json
 
-  #       cat response.json
+        cat response.json
 
-  #   - name: Check DB Init Result
-  #     run: |
-  #       if grep -q '"statusCode": 500' response.json; then
-  #         echo "Database initialization failed"
-  #         exit 1
-  #       fi
+    - name: Check DB Init Result
+      run: |
+        if grep -q '"statusCode": 500' response.json; then
+          echo "Database initialization failed"
+          exit 1
+        fi
 
-  #       echo "Database initialization completed successfully"
-  # monitoring:
-  #   name: Deploy Monitoring  Stack check yes
-  #   needs: application
+        echo "Database initialization completed successfully"
+  monitoring:
+    name: Deploy Monitoring  Stack check yes
+    needs: db-init
 
-  #   uses: ./.github/workflows/deploy-stack.yaml
-  #   with:
-  #     stack_name: dashboard-stack-CloudMart
-  #     template_file: cloudformation/dashboard-stack.yaml
-  #     parameters_file: cloudformation/config/monitoring-parameters.json
-  #     tags_file: cloudformation/config/tags.json
-  #     environment: ${{ vars.DEPLOY_ENV }}
+    uses: ./.github/workflows/deploy-stack.yaml
+    with:
+      stack_name: dashboard-stack-CloudMart
+      template_file: cloudformation/dashboard-stack.yaml
+      parameters_file: cloudformation/config/monitoring-parameters.json
+      tags_file: cloudformation/config/tags.json
+      environment: ${{ vars.DEPLOY_ENV }}
 
-  #   secrets: inherit
+    secrets: inherit
   # dashboard-update:
   #   name: Update Dashboard EC2
   #   needs: monitoring
