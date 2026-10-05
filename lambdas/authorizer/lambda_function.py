@@ -1377,6 +1377,17 @@ def get_method_arn(event):
 # ============================================================
 # Lambda Handler
 # ============================================================
+def is_public_product_route(method, path):
+    if method != "GET":
+        return False
+
+    if path == "/products":
+        return True
+
+    if re.match(r"^/products/[^/]+$", path):
+        return True
+
+    return False
 
 def lambda_handler(event, context):
 
@@ -1393,6 +1404,39 @@ def lambda_handler(event, context):
         method_arn = get_method_arn(
             event
         )
+        # ----------------------------------------------------
+        # Get HTTP Method and API Path
+        # ----------------------------------------------------
+
+        method = get_http_method(method_arn)
+
+        path = get_path(method_arn)
+
+        if not path or path == "/":
+            event_path = (
+                event.get("path")
+                or event.get("rawPath")
+            )
+
+            if event_path:
+                path = event_path
+
+        print(f"Method: {method}")
+        print(f"Path: {path}")
+        # ----------------------------------------------------
+# Public Product GET Requests
+# ----------------------------------------------------
+
+        if is_public_product_route(method, path):
+
+            print("Public product GET request")
+            print("Authentication not required")
+
+            return generate_policy(
+                "Allow",
+                method_arn,
+                principal_id="public-user"
+            )
 
 
         if not method_arn:

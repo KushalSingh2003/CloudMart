@@ -182,6 +182,7 @@
 # adding another comment
 
 from flask import Flask, render_template, request, redirect, session, url_for
+from botocore.config import Config
 from functools import wraps
 import os
 import pymysql
@@ -192,6 +193,7 @@ app = Flask(__name__)
 REPORTS_BUCKET = os.environ["REPORTS_BUCKET_NAME"]
 app.secret_key = os.environ["FLASK_SECRET_KEY"]
 ENVIRONMENT = os.environ["ENVIRONMENT"]
+AWS_REGION="ap-south-1"
 def admin_required(view):
     @wraps(view)
     def wrapped_view(*args, **kwargs):
@@ -804,9 +806,15 @@ def download_report():
     file_key = f"reports/daily-report-{report_date}.csv"
 
     s3 = boto3.client(
-        "s3",
-        region_name="ap-south-1"
+    "s3",
+    region_name=AWS_REGION,
+    config=Config(
+        signature_version="s3v4",
+        s3={
+            "addressing_style": "path"
+        }
     )
+   )
 
     try:
 
