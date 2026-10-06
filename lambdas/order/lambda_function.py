@@ -5438,6 +5438,7 @@ def lambda_handler(event, context):
                         "message": "Request body must be a JSON object"
                     }
                 )
+        #getting user_id and role from header
 
         user_id, role = get_authenticated_user(event)
 
@@ -5485,8 +5486,9 @@ def lambda_handler(event, context):
             params = []
 
             if role == "CUSTOMER":
-                query += "AND user_id = %s"
+                query += "AND user_id = %s" # this adds the partcular user id to the above query
                 params.append(user_id)
+            # if the user is admin , then no changes  in the query is made
 
             query += " ORDER BY created_at DESC"
 
@@ -5560,6 +5562,8 @@ def lambda_handler(event, context):
                             "message": "Order not found"
                         }
                     )
+                # need to add all the items that were present in that orders
+                
 
                 cursor.execute(
                     """
@@ -5574,6 +5578,7 @@ def lambda_handler(event, context):
                     """,
                     (order_id,)
                 )
+                # adding a key called Items in which all the items related to that order is present
 
                 order["Items"] = cursor.fetchall()
 

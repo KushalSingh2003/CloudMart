@@ -563,7 +563,7 @@ Resources:
       AuthorizerUri: !Sub
         - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AuthorizerArn}/invocations
         - AuthorizerArn: !GetAtt LambdaAuthorizer.Arn
-      IdentitySource: method.request.header.Authorization
+
       AuthorizerResultTtlInSeconds: 0
 
   # ==========================================================
