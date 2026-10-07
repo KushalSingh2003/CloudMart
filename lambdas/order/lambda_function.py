@@ -5801,6 +5801,7 @@ def lambda_handler(event, context):
                     """,
                     (user_id, total_amount)
                 )
+                # order_id of the new order created
 
                 new_order_id = cursor.lastrowid
 
