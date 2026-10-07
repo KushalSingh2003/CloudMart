@@ -312,12 +312,12 @@ def dashboard():
         with conn.cursor() as cursor:
 
             cursor.execute(
-                "SELECT COUNT(*) AS total FROM Products"
+                "SELECT COUNT(*) AS total FROM Products"# total products
             )
             total_products = cursor.fetchone()["total"]
 
             cursor.execute(
-                "SELECT COUNT(*) AS total FROM Customers"
+                "SELECT COUNT(*) AS total FROM Customers"#total customers
             )
             total_customers = cursor.fetchone()["total"]
 
@@ -326,7 +326,7 @@ def dashboard():
                 FROM Orders
                 WHERE is_deleted = 0
             """)
-            total_orders = cursor.fetchone()["total"]
+            total_orders = cursor.fetchone()["total"]#all orders
 
             cursor.execute("""
                 SELECT COALESCE(SUM(total_amount), 0) AS total
@@ -334,7 +334,7 @@ def dashboard():
                 WHERE is_deleted = 0
                 AND LOWER(status) != 'cancelled'
             """)
-            total_sales = cursor.fetchone()["total"]
+            total_sales = cursor.fetchone()["total"]#total amount
 
             cursor.execute("""
                 SELECT
@@ -350,7 +350,7 @@ def dashboard():
                 ORDER BY o.created_at DESC
                 LIMIT 10
             """)
-            recent_orders = cursor.fetchall()
+            recent_orders = cursor.fetchall()#recent 10 orders it will show the user_id instead of just user_id
 
             cursor.execute("""
                 SELECT
@@ -360,8 +360,8 @@ def dashboard():
                 WHERE is_deleted = 0
                 GROUP BY status
             """)
-            order_status = cursor.fetchall()
-            # Revenue trend
+            order_status = cursor.fetchall()# how many orders in each status
+            # Revenue trend day by day
             cursor.execute("""
                 SELECT
                     DATE(created_at) AS order_date,
@@ -376,7 +376,7 @@ def dashboard():
 
 
             
-            # Orders trend
+            # Orders trend i.e orders per day
             cursor.execute("""
                 SELECT
                     DATE(created_at) AS order_date,
